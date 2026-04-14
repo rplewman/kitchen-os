@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   getRecipes, saveRecipe, updateRecipe, deleteRecipe,
   addIngredientsToGrocery, getApiKey,
+  getISOWeekKey, getWeek, addDayMeal,
 } from './storage.js';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -104,6 +105,9 @@ function isRediscover(recipe) {
 
 const DIFFICULTY_LABELS = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
 
+const DAY_KEYS  = ['mon','tue','wed','thu','fri','sat','sun'];
+const DAY_LABEL = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 function DifficultyPill({ d }) {
@@ -119,7 +123,7 @@ function CookBadge({ recipe }) {
   );
 }
 
-function RecipeCard({ recipe, onTap, onAddToGrocery, macrosEnabled }) {
+function RecipeCard({ recipe, onTap, onAddToGrocery, onPlanThisWeek, macrosEnabled }) {
   return (
     <div
       className="card"
@@ -173,13 +177,22 @@ function RecipeCard({ recipe, onTap, onAddToGrocery, macrosEnabled }) {
         <span style={{ fontSize:11, color:'var(--text-muted)' }}>
           Added by {recipe.addedBy || 'unknown'}
         </span>
-        <button
-          className="btn-ghost"
-          style={{ fontSize:12, padding:'4px 10px', minHeight:32, color:'var(--amber)' }}
-          onClick={e => { e.stopPropagation(); onAddToGrocery(recipe); }}
-        >
-          + Groceries
-        </button>
+        <div style={{ display:'flex', gap:4 }}>
+          <button
+            className="btn-ghost"
+            style={{ fontSize:12, padding:'4px 8px', minHeight:32, color:'var(--green)' }}
+            onClick={e => { e.stopPropagation(); onPlanThisWeek(recipe); }}
+          >
+            + Plan
+          </button>
+          <button
+            className="btn-ghost"
+            style={{ fontSize:12, padding:'4px 8px', minHeight:32, color:'var(--amber)' }}
+            onClick={e => { e.stopPropagation(); onAddToGrocery(recipe); }}
+          >
+            + Groceries
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -440,6 +453,18 @@ function RecipeDetailSheet({ recipe, user, onClose, onDeleted, onAddToGrocery })
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showIngPicker, setShowIngPicker] = useState(false);
   const [selected, setSelected] = useState({});
+  const baseServings = recipe.servings || 2;
+  const [scaledServings, setScaledServings] = useState(baseServings);
+  const scaleFactor = scaledServings / baseServings;
+
+  function scaleAmount(amount) {
+    if (!amount) return amount;
+    const num = parseFloat(amount);
+    if (isNaN(num)) return amount;
+    const scaled = num * scaleFactor;
+    if (scaled === Math.round(scaled)) return String(Math.round(scaled));
+    return parseFloat(scaled.toFixed(1)).toString();
+  }
 
   function handleDelete() {
     deleteRecipe(recipe.id);
@@ -471,10 +496,34 @@ function RecipeDetailSheet({ recipe, user, onClose, onDeleted, onAddToGrocery })
               style={{ width:'100%', height:180, objectFit:'cover', borderRadius:'var(--radius-sm)', marginBottom:14 }} />
           )}
 
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', marginBottom:14 }}>
             {recipe.difficulty && <DifficultyPill d={recipe.difficulty} />}
             {recipe.timeEstimate && <span className="pill pill-cook">⏱ {recipe.timeEstimate}</span>}
-            {recipe.servings && <span className="pill pill-cook">🍽 {recipe.servings}</span>}
+            {recipe.servings && (
+              <div style={{ display:'flex', alignItems:'center', gap:2, background:'var(--bg)',
+                borderRadius:99, border:'1.5px solid var(--border)', padding:'3px 6px' }}>
+                <button
+                  onClick={() => setScaledServings(s => Math.max(1, s - 1))}
+                  style={{ background:'none', border:'none', fontSize:16, cursor:'pointer',
+                    padding:'0 4px', lineHeight:1, color:'var(--text-muted)', minHeight:26, minWidth:24 }}>
+                  −
+                </button>
+                <span style={{ fontSize:13, fontWeight:600, minWidth:32, textAlign:'center' }}>
+                  🍽 {scaledServings}
+                </span>
+                <button
+                  onClick={() => setScaledServings(s => s + 1)}
+                  style={{ background:'none', border:'none', fontSize:16, cursor:'pointer',
+                    padding:'0 4px', lineHeight:1, color:'var(--text-muted)', minHeight:26, minWidth:24 }}>
+                  +
+                </button>
+              </div>
+            )}
+            {scaledServings !== baseServings && (
+              <span style={{ fontSize:11, color:'var(--amber)', fontStyle:'italic' }}>
+                scaled from {baseServings}
+              </span>
+            )}
             <CookBadge recipe={recipe} />
           </div>
 
@@ -491,7 +540,7 @@ function RecipeDetailSheet({ recipe, user, onClose, onDeleted, onAddToGrocery })
                 {recipe.ingredients.map((ing, i) => (
                   <li key={i} style={{ fontSize:14, padding:'4px 0', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between' }}>
                     <span>{ing.name}</span>
-                    <span style={{ color:'var(--text-muted)', fontSize:13 }}>{[ing.amount, ing.unit].filter(Boolean).join(' ')}</span>
+                    <span style={{ color:'var(--text-muted)', fontSize:13 }}>{[scaleAmount(ing.amount), ing.unit].filter(Boolean).join(' ')}</span>
                   </li>
                 ))}
               </ul>
@@ -608,6 +657,18 @@ export default function RecipesTab({ user, tick, macrosEnabled }) {
 
   function refresh() { setRecipes(getRecipes()); }
 
+  function handlePlanThisWeek(recipe) {
+    const weekKey = getISOWeekKey();
+    const week = getWeek(weekKey);
+    const emptyDayIdx = DAY_KEYS.findIndex(d => (week[d]?.meals || []).length === 0);
+    if (emptyDayIdx === -1) {
+      showToast('Every day is already planned this week!');
+      return;
+    }
+    addDayMeal(weekKey, DAY_KEYS[emptyDayIdx], { mealName: recipe.title, recipeId: recipe.id });
+    showToast(`Added to ${DAY_LABEL[emptyDayIdx]}!`);
+  }
+
   const filtered = recipes.filter(r =>
     !search || r.title.toLowerCase().includes(search.toLowerCase()) ||
     r.tags?.some(t => t.toLowerCase().includes(search.toLowerCase()))
@@ -660,6 +721,7 @@ export default function RecipesTab({ user, tick, macrosEnabled }) {
               recipe={r}
               onTap={setSelected}
               macrosEnabled={macrosEnabled}
+              onPlanThisWeek={handlePlanThisWeek}
               onAddToGrocery={recipe => {
                 setSelected(recipe);
               }}

@@ -31,16 +31,25 @@ async function categoriseItem(name) {
 
 // ── Swipeable grocery item ─────────────────────────────────────────────────
 
-function GroceryItem({ item, onToggle, onDelete }) {
+function GroceryItem({ item, onToggle, onDelete, onEdit }) {
   const touchStartX = useRef(null);
-  const [swiped, setSwiped] = useState(false);
+  const [swiped,     setSwiped]     = useState(false);
+  const [editingQty, setEditingQty] = useState(false);
+  const [editAmount, setEditAmount] = useState(item.amount || '');
+  const [editUnit,   setEditUnit]   = useState(item.unit   || '');
+
+  function saveEdit() {
+    onEdit(item.id, { amount: editAmount.trim(), unit: editUnit.trim() });
+    setEditingQty(false);
+  }
 
   function onTouchStart(e) { touchStartX.current = e.touches[0].clientX; }
   function onTouchEnd(e) {
     if (touchStartX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (dx < -60) setSwiped(true);
-    else if (dx > 40) setSwiped(false);
+    if (dx < -60) { setSwiped(true); }
+    else if (dx > 60) { onToggle(item); setSwiped(false); }
+    else if (dx > 20) { setSwiped(false); }
     touchStartX.current = null;
   }
 
@@ -84,10 +93,29 @@ function GroceryItem({ item, onToggle, onDelete }) {
           }}>
             {item.name}
           </p>
-          {(item.amount || item.unit || item.addedBy) && (
-            <p style={{ fontSize:12, color:'var(--text-muted)', margin:0 }}>
+          {editingQty ? (
+            <div style={{ display:'flex', gap:4, alignItems:'center', marginTop:2 }}>
+              <input type="text" value={editAmount} onChange={e => setEditAmount(e.target.value)}
+                onKeyDown={e => { if (e.key==='Enter') saveEdit(); if (e.key==='Escape') setEditingQty(false); }}
+                style={{ width:52, fontSize:12, padding:'2px 6px', height:26 }} autoFocus />
+              <input type="text" value={editUnit} onChange={e => setEditUnit(e.target.value)}
+                onKeyDown={e => { if (e.key==='Enter') saveEdit(); if (e.key==='Escape') setEditingQty(false); }}
+                style={{ width:64, fontSize:12, padding:'2px 6px', height:26 }} placeholder="unit" />
+              <button onClick={saveEdit}
+                style={{ fontSize:11, background:'var(--green)', color:'#fff', border:'none',
+                  borderRadius:4, padding:'2px 8px', cursor:'pointer', height:26 }}>✓</button>
+              <button onClick={() => setEditingQty(false)}
+                style={{ fontSize:13, background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}>✕</button>
+            </div>
+          ) : (item.amount || item.unit || item.addedBy) && (
+            <p style={{ fontSize:12, color:'var(--text-muted)', margin:0,
+              cursor: (item.amount || item.unit) ? 'pointer' : 'default' }}
+              onClick={() => { if (item.amount || item.unit) {
+                setEditAmount(item.amount || ''); setEditUnit(item.unit || ''); setEditingQty(true);
+              }}}>
               {[item.amount, item.unit].filter(Boolean).join(' ')}
               {item.addedBy && ` · ${item.addedBy}`}
+              {(item.amount || item.unit) && <span style={{ marginLeft:4, fontSize:10, color:'var(--border)' }}>✏</span>}
             </p>
           )}
         </div>
@@ -282,6 +310,11 @@ export default function GroceryTab({ user, tick }) {
     refresh();
   }
 
+  function handleEdit(id, changes) {
+    updateGroceryItem(id, changes);
+    refresh();
+  }
+
   function handleClearChecked() {
     clearCheckedItems();
     refresh();
@@ -399,6 +432,7 @@ export default function GroceryTab({ user, tick }) {
                   item={item}
                   onToggle={handleToggle}
                   onDelete={handleDelete}
+                  onEdit={handleEdit}
                 />
               ))}
             </div>
