@@ -305,11 +305,11 @@ export function removeFromRanking(userName, mealId) {
 // ---------------------------------------------------------------------------
 
 export function getApiKey() {
-  return localStorage.getItem(KEYS.apiKey) || '';
+  return read(KEYS.apiKey, '');
 }
 
 export function setApiKey(key) {
-  localStorage.setItem(KEYS.apiKey, key);
+  write(KEYS.apiKey, key);
 }
 
 // ---------------------------------------------------------------------------
