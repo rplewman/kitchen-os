@@ -311,3 +311,15 @@ export function getApiKey() {
 export function setApiKey(key) {
   localStorage.setItem(KEYS.apiKey, key);
 }
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+export function getSettings() {
+  return read('kitchen_os_settings', { macrosEnabled: true });
+}
+
+export function saveSettings(changes) {
+  write('kitchen_os_settings', { ...getSettings(), ...changes });
+}

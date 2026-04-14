@@ -294,9 +294,148 @@ function DayCard({ dayKey, dayIndex, weekKey, monday, onTap, tick }) {
   );
 }
 
+// ── Weekly Nutrition Panel ─────────────────────────────────────────────────
+
+// Rough daily targets (based on NHS / standard dietary reference values)
+const DAILY_TARGETS = {
+  calories: 2000,
+  protein:  50,   // g
+  carbs:    260,  // g
+  fat:      70,   // g
+  fiber:    30,   // g
+};
+
+const MACRO_META = [
+  { key:'protein',  label:'Protein',  unit:'g', tip:'Aim for ~50g/day — supports muscle, satiety' },
+  { key:'fiber',    label:'Fibre',    unit:'g', tip:'Aim for ~30g/day — gut health, keeps you full' },
+  { key:'carbs',    label:'Carbs',    unit:'g', tip:'Aim for ~260g/day — main energy source'        },
+  { key:'fat',      label:'Fat',      unit:'g', tip:'Aim for ~70g/day — hormones, brain function'   },
+  { key:'calories', label:'Calories', unit:'',  tip:'Aim for ~2000 kcal/day'                        },
+];
+
+function trafficLight(value, target) {
+  const pct = value / target;
+  if (pct >= 0.8) return { color:'#2e7d32', bg:'#e8f5e9', label:'Good' };
+  if (pct >= 0.5) return { color:'#e65100', bg:'#fff3e0', label:'Low'  };
+  return                 { color:'#c62828', bg:'#ffebee', label:'Very low' };
+}
+
+function WeeklyNutritionPanel({ week, recipes }) {
+  const [open, setOpen] = useState(false);
+
+  // Sum macros across all planned recipe-linked meals for the week
+  const totals = { calories:0, protein:0, carbs:0, fat:0, fiber:0 };
+  let daysWithData = 0;
+  let missingMacros = 0;
+
+  DAY_KEYS.forEach(day => {
+    const dayMeals = week[day]?.meals || [];
+    let dayHasData = false;
+    dayMeals.forEach(m => {
+      if (!m.recipeId) return;
+      const recipe = recipes.find(r => r.id === m.recipeId);
+      if (!recipe) return;
+      if (!recipe.macros) { missingMacros++; return; }
+      const servings = recipe.servings || 1;
+      Object.keys(totals).forEach(k => {
+        totals[k] += (recipe.macros[k] || 0) * servings;
+      });
+      dayHasData = true;
+    });
+    if (dayHasData) daysWithData++;
+  });
+
+  const hasAnyData = daysWithData > 0;
+  // Average per day (only over days that have planned meals)
+  const perDay = {};
+  Object.keys(totals).forEach(k => {
+    perDay[k] = daysWithData > 0 ? Math.round(totals[k] / daysWithData) : 0;
+  });
+
+  if (!hasAnyData) return null;
+
+  return (
+    <div style={{ margin:'4px 16px 16px', background:'var(--card)', borderRadius:'var(--radius)',
+      boxShadow:'var(--shadow)', overflow:'hidden' }}>
+      {/* Header row — always visible */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ width:'100%', background:'transparent', border:'none', cursor:'pointer',
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'12px 16px', minHeight:48 }}
+      >
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:16 }}>🥗</span>
+          <span style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.05rem', fontWeight:600 }}>
+            Weekly nutrition gut-check
+          </span>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          {/* Quick traffic-light dots for protein + fibre */}
+          {['protein','fiber'].map(k => {
+            const tl = trafficLight(perDay[k], DAILY_TARGETS[k]);
+            return <div key={k} style={{ width:8, height:8, borderRadius:'50%', background: tl.color }} />;
+          })}
+          <span style={{ fontSize:16, color:'var(--text-muted)', transform: open ? 'rotate(180deg)' : 'none',
+            transition:'transform 0.2s' }}>
+            ›
+          </span>
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      {open && (
+        <div style={{ padding:'0 16px 16px', borderTop:'1px solid var(--border)' }}>
+          <p style={{ fontSize:12, color:'var(--text-muted)', margin:'10px 0 14px' }}>
+            Average per day · based on {daysWithData} planned day{daysWithData !== 1 ? 's' : ''}
+            {missingMacros > 0 ? ` · ${missingMacros} recipe${missingMacros !== 1 ? 's' : ''} missing estimates` : ''}
+          </p>
+
+          {MACRO_META.map(({ key, label, unit, tip }) => {
+            const value  = perDay[key];
+            const target = DAILY_TARGETS[key];
+            const tl     = trafficLight(value, target);
+            const pct    = Math.min(100, Math.round((value / target) * 100));
+
+            return (
+              <div key={key} style={{ marginBottom:14 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
+                  <span style={{ fontSize:13, fontWeight:600 }}>{label}</span>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ fontSize:13, fontWeight:700, color: tl.color }}>
+                      {value}{unit}
+                    </span>
+                    <span style={{ fontSize:11, color:'var(--text-muted)' }}>
+                      / {target}{unit}
+                    </span>
+                    <span style={{ fontSize:11, fontWeight:600, background: tl.bg,
+                      color: tl.color, padding:'1px 7px', borderRadius:99 }}>
+                      {tl.label}
+                    </span>
+                  </div>
+                </div>
+                {/* Progress bar */}
+                <div style={{ height:6, background:'var(--bg)', borderRadius:3, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${pct}%`, background: tl.color,
+                    borderRadius:3, transition:'width 0.4s' }} />
+                </div>
+                <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>{tip}</p>
+              </div>
+            );
+          })}
+
+          <p style={{ fontSize:11, color:'var(--text-muted)', fontStyle:'italic', marginTop:4 }}>
+            Estimates only — useful as a rough guide, not clinical advice.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Tab ───────────────────────────────────────────────────────────────
 
-export default function MealPlannerTab({ user, tick: remoteTick }) {
+export default function MealPlannerTab({ user, tick: remoteTick, macrosEnabled }) {
   const [weekKey,   setWeekKey]   = useState(() => getISOWeekKey());
   const [activeDay, setActiveDay] = useState(null);
   const [tick,      setTick]      = useState(0);
@@ -379,6 +518,11 @@ export default function MealPlannerTab({ user, tick: remoteTick }) {
           />
         ))}
       </div>
+
+      {/* Weekly nutrition panel */}
+      {macrosEnabled && (
+        <WeeklyNutritionPanel week={week} recipes={getRecipes()} />
+      )}
 
       {/* Sticky "Add week to groceries" */}
       <div style={{ position:'sticky', bottom:'calc(var(--tab-h) + 8px)', padding:'0 16px', zIndex:10 }}>

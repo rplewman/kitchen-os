@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getApiKey, setApiKey, _registerPush } from './storage.js';
+import { getApiKey, setApiKey, getSettings, saveSettings, _registerPush } from './storage.js';
 import { initSync, teardownSync, pushToFirebase, isFirebaseConfigured } from './sync.js';
 import RecipesTab      from './RecipesTab.jsx';
 import MealPlannerTab  from './MealPlannerTab.jsx';
@@ -16,12 +16,13 @@ const TABS = [
 const KNOWN_USERS = ['Rory', 'Devon'];
 
 export default function App() {
-  const [activeTab,   setActiveTab]   = useState('plan');
-  const [user,        setUser]        = useState('');
-  const [nameInput,   setNameInput]   = useState('');
-  const [showSetup,   setShowSetup]   = useState(false);
-  const [showApiKey,  setShowApiKey]  = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [activeTab,      setActiveTab]      = useState('plan');
+  const [user,           setUser]           = useState('');
+  const [nameInput,      setNameInput]      = useState('');
+  const [showSetup,      setShowSetup]      = useState(false);
+  const [showApiKey,     setShowApiKey]     = useState(false);
+  const [apiKeyInput,    setApiKeyInput]    = useState('');
+  const [macrosEnabled,  setMacrosEnabled]  = useState(() => getSettings().macrosEnabled);
   // tick increments whenever Firebase pushes a remote change → tabs re-read localStorage
   const [tick, setTick] = useState(0);
 
@@ -58,12 +59,18 @@ export default function App() {
     setShowApiKey(false);
   }
 
+  function handleToggleMacros() {
+    const next = !macrosEnabled;
+    setMacrosEnabled(next);
+    saveSettings({ macrosEnabled: next });
+  }
+
   return (
     <>
       {/* ── Main content ── */}
       <div className="tab-content">
-        {activeTab === 'plan'    && <MealPlannerTab user={user} tick={tick} />}
-        {activeTab === 'recipes' && <RecipesTab     user={user} tick={tick} />}
+        {activeTab === 'plan'    && <MealPlannerTab user={user} tick={tick} macrosEnabled={macrosEnabled} />}
+        {activeTab === 'recipes' && <RecipesTab     user={user} tick={tick} macrosEnabled={macrosEnabled} />}
         {activeTab === 'grocery' && <GroceryTab     user={user} tick={tick} />}
         {activeTab === 'hof'     && <HallOfFameTab  user={user} tick={tick} />}
       </div>
@@ -161,6 +168,39 @@ export default function App() {
                     onClick={() => { setShowApiKey(false); setShowSetup(true); }}>
                     Switch user
                   </button>
+                </div>
+              </div>
+
+              {/* Macro tracking toggle */}
+              <div className="field">
+                <label>Nutrition estimates</label>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+                  background:'var(--bg)', border:'1.5px solid var(--border)', borderRadius:'var(--radius-sm)',
+                  padding:'12px 14px' }}>
+                  <div>
+                    <p style={{ fontSize:14, fontWeight:500, margin:0 }}>Weekly macro gut-check</p>
+                    <p style={{ fontSize:12, color:'var(--text-muted)', margin:'2px 0 0' }}>
+                      Estimates protein, carbs, fat &amp; fibre per recipe
+                    </p>
+                  </div>
+                  {/* Toggle switch */}
+                  <div
+                    onClick={handleToggleMacros}
+                    style={{
+                      width:44, height:26, borderRadius:13, flexShrink:0,
+                      background: macrosEnabled ? 'var(--green)' : 'var(--border)',
+                      position:'relative', cursor:'pointer',
+                      transition:'background 0.2s',
+                    }}
+                  >
+                    <div style={{
+                      position:'absolute', top:3,
+                      left: macrosEnabled ? 21 : 3,
+                      width:20, height:20, borderRadius:'50%', background:'#fff',
+                      boxShadow:'0 1px 4px rgba(0,0,0,0.2)',
+                      transition:'left 0.2s',
+                    }} />
+                  </div>
                 </div>
               </div>
 

@@ -20,6 +20,33 @@ async function callClaude(systemPrompt, userContent) {
   return msg.content[0].text;
 }
 
+// ── Background macro estimation ────────────────────────────────────────────
+
+const MACRO_SYSTEM = `You estimate nutritional macros for a recipe and return ONLY valid JSON.
+Given a list of ingredients and the number of servings, estimate per-serving values.
+Return exactly:
+{"calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number}
+All numbers are integers. Protein/carbs/fat/fiber in grams. Return ONLY the JSON, no markdown.`;
+
+export async function estimateMacros(recipe) {
+  const apiKey = getApiKey();
+  if (!apiKey || !recipe.ingredients?.length) return null;
+  try {
+    const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+    const ingList = recipe.ingredients.map(i =>
+      `${i.amount || ''} ${i.unit || ''} ${i.name}`.trim()
+    ).join(', ');
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 100,
+      system: MACRO_SYSTEM,
+      messages: [{ role: 'user', content:
+        `Recipe: ${recipe.title}\nServings: ${recipe.servings || 2}\nIngredients: ${ingList}` }],
+    });
+    return JSON.parse(msg.content[0].text);
+  } catch { return null; }
+}
+
 const EXTRACT_SYSTEM = `You extract recipe information and return ONLY valid JSON.
 Return an object with these exact fields:
 {
@@ -92,7 +119,7 @@ function CookBadge({ recipe }) {
   );
 }
 
-function RecipeCard({ recipe, onTap, onAddToGrocery }) {
+function RecipeCard({ recipe, onTap, onAddToGrocery, macrosEnabled }) {
   return (
     <div
       className="card"
@@ -126,7 +153,23 @@ function RecipeCard({ recipe, onTap, onAddToGrocery }) {
         )}
         <CookBadge recipe={recipe} />
       </div>
-      <div style={{ marginTop:10, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      {macrosEnabled && recipe.macros && (
+        <div style={{ display:'flex', gap:10, marginTop:8, flexWrap:'wrap' }}>
+          {[
+            { label:'cal', value: recipe.macros.calories, color:'#7c4a00' },
+            { label:'P',   value: recipe.macros.protein,  color:'#1b5e20' },
+            { label:'C',   value: recipe.macros.carbs,    color:'#0d47a1' },
+            { label:'F',   value: recipe.macros.fat,      color:'#b71c1c' },
+            { label:'Fi',  value: recipe.macros.fiber,    color:'#4a148c' },
+          ].map(({ label, value, color }) => (
+            <span key={label} style={{ fontSize:11, color, fontWeight:600 }}>
+              {label} {value}{label === 'cal' ? '' : 'g'}
+            </span>
+          ))}
+          <span style={{ fontSize:10, color:'var(--text-muted)' }}>per serving</span>
+        </div>
+      )}
+      <div style={{ marginTop:8, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <span style={{ fontSize:11, color:'var(--text-muted)' }}>
           Added by {recipe.addedBy || 'unknown'}
         </span>
@@ -248,6 +291,12 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
     const saved = saveRecipe(recipe);
     onSaved(saved);
     onClose();
+    // Estimate macros in the background after save (only if feature is on)
+    if (macrosEnabled) {
+      estimateMacros(saved).then(macros => {
+        if (macros) updateRecipe(saved.id, { macros });
+      });
+    }
   }
 
   // Determine if the sticky Save button should show
@@ -542,7 +591,7 @@ function RecipeDetailSheet({ recipe, user, onClose, onDeleted, onAddToGrocery })
 
 // ── Main Tab ───────────────────────────────────────────────────────────────
 
-export default function RecipesTab({ user, tick }) {
+export default function RecipesTab({ user, tick, macrosEnabled }) {
   const [recipes,     setRecipes]     = useState(() => getRecipes());
   const [showAdd,     setShowAdd]     = useState(false);
   const [selected,    setSelected]    = useState(null);
@@ -610,8 +659,9 @@ export default function RecipesTab({ user, tick }) {
               key={r.id}
               recipe={r}
               onTap={setSelected}
+              macrosEnabled={macrosEnabled}
               onAddToGrocery={recipe => {
-                setSelected(recipe); // open detail with grocery picker
+                setSelected(recipe);
               }}
             />
           ))}
