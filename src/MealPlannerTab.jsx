@@ -215,7 +215,7 @@ export default function MealPlannerTab({ user, tick: remoteTick }) {
       if (!m?.recipeId) return;
       const recipe = recipes.find(r => r.id === m.recipeId);
       if (!recipe?.ingredients?.length) return;
-      addIngredientsToGrocery(recipe.ingredients, user || 'Unknown', recipe.id);
+      addIngredientsToGrocery(recipe.ingredients, user || 'Unknown', recipe.id, weekKey);
       count += recipe.ingredients.length;
     });
     if (count > 0) showToast(`Added ${count} items to your grocery list!`);
@@ -225,21 +225,27 @@ export default function MealPlannerTab({ user, tick: remoteTick }) {
   return (
     <div style={{ padding:'0 0 80px' }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {/* Header */}
-      <div style={{ padding:'20px 16px 4px' }}>
-        <h1 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'2rem', marginBottom:4 }}>
+      <div style={{ padding:'28px 16px 8px', borderBottom:'1px solid var(--border)', marginBottom:12 }}>
+        <p style={{ fontSize:11, fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase',
+          color:'var(--amber)', marginBottom:4 }}>
+          Kitchen OS
+        </p>
+        <h1 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'2.8rem', margin:'0 0 12px', lineHeight:1 }}>
           Meal Plan
         </h1>
 
         {/* Week navigation */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
-          <button className="btn-icon" onClick={goToPrev} style={{ fontSize:20 }}>‹</button>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+          background:'var(--card)', borderRadius:'var(--radius)', padding:'10px 6px',
+          boxShadow:'var(--shadow)' }}>
+          <button className="btn-icon" onClick={goToPrev} style={{ fontSize:22, color:'var(--green)' }}>‹</button>
           <div style={{ textAlign:'center' }}>
-            <p style={{ fontSize:13, fontWeight:600, color:'var(--green)' }}>
-              {isCurrentWeek ? 'This week' : weekKey}
+            <p style={{ fontSize:14, fontWeight:700, color:'var(--green)', marginBottom:2 }}>
+              {isCurrentWeek ? '✦ This week' : weekKey}
             </p>
             <p style={{ fontSize:12, color:'var(--text-muted)' }}>{weekLabel(weekKey)}</p>
           </div>
-          <button className="btn-icon" onClick={goToNext} style={{ fontSize:20 }}>›</button>
+          <button className="btn-icon" onClick={goToNext} style={{ fontSize:22, color:'var(--green)' }}>›</button>
         </div>
       </div>
 

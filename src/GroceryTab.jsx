@@ -3,6 +3,7 @@ import {
   getGrocery, addGroceryItem, updateGroceryItem,
   deleteGroceryItem, clearCheckedItems,
   getRecipes, addIngredientsToGrocery, getApiKey,
+  getISOWeekKey,
 } from './storage.js';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -60,14 +61,15 @@ function GroceryItem({ item, onToggle, onDelete }) {
           opacity: item.checked ? 0.5 : 1,
         }}
       >
-        {/* Checkbox */}
+        {/* Circular checkbox */}
         <div
           onClick={() => onToggle(item)}
           style={{
-            width:22, height:22, borderRadius:6, flexShrink:0, cursor:'pointer',
+            width:26, height:26, borderRadius:'50%', flexShrink:0, cursor:'pointer',
             border:`2px solid ${item.checked ? 'var(--green)' : 'var(--border)'}`,
             background: item.checked ? 'var(--green)' : 'transparent',
             display:'flex', alignItems:'center', justifyContent:'center',
+            transition:'background 0.15s, border-color 0.15s',
           }}
         >
           {item.checked && <span style={{ color:'#fff', fontSize:13, lineHeight:1 }}>✓</span>}
@@ -251,12 +253,22 @@ export default function GroceryTab({ user, tick }) {
   const [showAdd,    setShowAdd]    = useState(false);
   const [showRecipe, setShowRecipe] = useState(false);
   const [toast,      setToast]      = useState('');
+  const [weekFilter, setWeekFilter] = useState('all'); // 'all' | weekKey string
 
   // Re-read when Firebase pushes a remote change
   useEffect(() => { setItems(getGrocery()); }, [tick]);
 
   function refresh() { setItems(getGrocery()); }
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2200); }
+
+  // Collect distinct weeks that have tagged items
+  const weeks = [...new Set(items.map(i => i.weekKey).filter(Boolean))].sort().reverse();
+  const currentWeek = getISOWeekKey();
+
+  // Apply week filter
+  const visibleItems = weekFilter === 'all'
+    ? items
+    : items.filter(i => i.weekKey === weekFilter || !i.weekKey && weekFilter === 'untagged');
 
   function handleToggle(item) {
     updateGroceryItem(item.id, { checked: !item.checked });
@@ -274,10 +286,10 @@ export default function GroceryTab({ user, tick }) {
     showToast('Cleared checked items.');
   }
 
-  // Group items by category
+  // Group visible items by category
   const grouped = {};
   CATEGORIES.forEach(cat => { grouped[cat] = []; });
-  items.forEach(item => {
+  visibleItems.forEach(item => {
     const cat = CATEGORIES.includes(item.category) ? item.category : 'Other';
     grouped[cat].push(item);
   });
@@ -287,7 +299,7 @@ export default function GroceryTab({ user, tick }) {
     grouped[cat].sort((a,b) => (a.checked ? 1 : 0) - (b.checked ? 1 : 0));
   });
 
-  const hasChecked = items.some(i => i.checked);
+  const hasChecked = visibleItems.some(i => i.checked);
   const totalCount = items.length;
 
   return (
@@ -313,7 +325,7 @@ export default function GroceryTab({ user, tick }) {
       </div>
 
       {/* Action buttons */}
-      <div style={{ padding:'0 16px 16px', display:'flex', gap:8 }}>
+      <div style={{ padding:'0 16px 12px', display:'flex', gap:8 }}>
         <button className="btn-primary" style={{ flex:1, fontSize:14 }} onClick={() => setShowAdd(true)}>
           + Add item
         </button>
@@ -321,6 +333,37 @@ export default function GroceryTab({ user, tick }) {
           From recipe
         </button>
       </div>
+
+      {/* Week filter strip */}
+      {weeks.length > 0 && (
+        <div style={{ display:'flex', gap:8, overflowX:'auto', padding:'0 16px 14px', scrollbarWidth:'none' }}>
+          <button
+            onClick={() => setWeekFilter('all')}
+            style={{
+              flexShrink:0, padding:'5px 14px', borderRadius:99, fontSize:13, fontWeight:600,
+              border:'1.5px solid var(--border)', cursor:'pointer',
+              background: weekFilter === 'all' ? 'var(--green)' : 'var(--card)',
+              color: weekFilter === 'all' ? '#fff' : 'var(--text-muted)',
+            }}
+          >
+            All
+          </button>
+          {weeks.map(wk => (
+            <button
+              key={wk}
+              onClick={() => setWeekFilter(wk)}
+              style={{
+                flexShrink:0, padding:'5px 14px', borderRadius:99, fontSize:13, fontWeight:600,
+                border:'1.5px solid var(--border)', cursor:'pointer',
+                background: weekFilter === wk ? 'var(--green)' : 'var(--card)',
+                color: weekFilter === wk ? '#fff' : 'var(--text-muted)',
+              }}
+            >
+              {wk === currentWeek ? 'This week' : wk}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Empty state */}
       {totalCount === 0 && (

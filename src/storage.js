@@ -193,7 +193,7 @@ export function clearCheckedItems() {
   write(KEYS.grocery, getGrocery().filter(i => !i.checked));
 }
 
-export function addIngredientsToGrocery(ingredients, addedBy, fromRecipeId) {
+export function addIngredientsToGrocery(ingredients, addedBy, fromRecipeId, weekKey = null) {
   ingredients.forEach(ing => {
     addGroceryItem({
       name: ing.name,
@@ -202,6 +202,7 @@ export function addIngredientsToGrocery(ingredients, addedBy, fromRecipeId) {
       category: ing.category || 'Other',
       addedBy,
       fromRecipeId,
+      weekKey,
     });
   });
 }
