@@ -108,29 +108,69 @@ export function getMealPlan() {
   return read(KEYS.mealPlan, {});
 }
 
-export function getWeek(weekKey) {
-  const plan = getMealPlan();
-  if (!plan[weekKey]) {
-    const empty = {};
-    DAYS.forEach(d => { empty[d] = { mealName: '', recipeId: null }; });
-    return empty;
-  }
-  return plan[weekKey];
+function emptyWeek() {
+  const w = {};
+  DAYS.forEach(d => { w[d] = { meals: [] }; });
+  return w;
 }
 
-export function setDayMeal(weekKey, day, { mealName, recipeId }) {
-  const plan = getMealPlan();
-  if (!plan[weekKey]) {
-    const empty = {};
-    DAYS.forEach(d => { empty[d] = { mealName: '', recipeId: null }; });
-    plan[weekKey] = empty;
+/** Normalise a day slot to always use the `meals` array format. */
+function normaliseDay(slot) {
+  if (!slot) return { meals: [] };
+  // Legacy format: { mealName, recipeId }
+  if (!slot.meals) {
+    if (slot.mealName) return { meals: [{ mealName: slot.mealName, recipeId: slot.recipeId || null }] };
+    return { meals: [] };
   }
-  plan[weekKey][day] = { mealName, recipeId: recipeId || null };
+  return slot;
+}
+
+export function getWeek(weekKey) {
+  const plan = getMealPlan();
+  const week = plan[weekKey] || emptyWeek();
+  // Normalise every day slot (handles legacy single-meal format)
+  const out = {};
+  DAYS.forEach(d => { out[d] = normaliseDay(week[d]); });
+  return out;
+}
+
+function ensureWeek(plan, weekKey) {
+  if (!plan[weekKey]) plan[weekKey] = emptyWeek();
+  DAYS.forEach(d => {
+    plan[weekKey][d] = normaliseDay(plan[weekKey][d]);
+  });
+}
+
+/** Add a meal entry to a day (supports multiple per day). */
+export function addDayMeal(weekKey, day, { mealName, recipeId }) {
+  const plan = getMealPlan();
+  ensureWeek(plan, weekKey);
+  plan[weekKey][day].meals.push({ mealName, recipeId: recipeId || null });
   write(KEYS.mealPlan, plan);
 }
 
+/** Remove a meal entry by index from a day. */
+export function removeDayMeal(weekKey, day, index) {
+  const plan = getMealPlan();
+  ensureWeek(plan, weekKey);
+  plan[weekKey][day].meals.splice(index, 1);
+  write(KEYS.mealPlan, plan);
+}
+
+/** Clear all meals from a day. */
 export function clearDayMeal(weekKey, day) {
-  setDayMeal(weekKey, day, { mealName: '', recipeId: null });
+  const plan = getMealPlan();
+  ensureWeek(plan, weekKey);
+  plan[weekKey][day].meals = [];
+  write(KEYS.mealPlan, plan);
+}
+
+/** @deprecated Use addDayMeal. Kept for any callers that set a single meal. */
+export function setDayMeal(weekKey, day, { mealName, recipeId }) {
+  const plan = getMealPlan();
+  ensureWeek(plan, weekKey);
+  plan[weekKey][day].meals = mealName ? [{ mealName, recipeId: recipeId || null }] : [];
+  write(KEYS.mealPlan, plan);
 }
 
 /** ISO week key e.g. "2025-W22" */
