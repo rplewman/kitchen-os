@@ -57,6 +57,19 @@ export function pushToFirebase() {
 let listenerRef = null;
 let ignoreNextRemote = false; // avoid echo: don't apply our own push back
 
+function localHasData() {
+  return STORAGE_KEYS.some(key => {
+    const raw = localStorage.getItem(key);
+    if (!raw) return false;
+    try {
+      const v = JSON.parse(raw);
+      if (Array.isArray(v)) return v.length > 0;
+      if (typeof v === 'object' && v !== null) return Object.keys(v).length > 0;
+      return Boolean(v);
+    } catch { return false; }
+  });
+}
+
 export function initSync(onRemoteChange) {
   if (!isFirebaseConfigured) return;
 
@@ -65,7 +78,13 @@ export function initSync(onRemoteChange) {
   onValue(listenerRef, (snapshot) => {
     if (ignoreNextRemote) { ignoreNextRemote = false; return; }
     const remote = snapshot.val();
-    if (!remote) return; // empty DB — don't wipe local data
+
+    if (!remote) {
+      // Firebase is empty — seed it with whatever we have locally
+      if (localHasData()) pushToFirebase();
+      return;
+    }
+
     applyRemoteSnapshot(remote);
     onRemoteChange(); // tell React to re-render
   }, (err) => {
