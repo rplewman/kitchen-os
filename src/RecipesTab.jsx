@@ -250,10 +250,16 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
     onClose();
   }
 
+  // Determine if the sticky Save button should show
+  const showSaveButton = mode === 'manual' && !loading;
+  const showExtractButton = (mode === 'url' || mode === 'photo') && !loading;
+
   return (
     <div className="sheet-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sheet">
         <div className="sheet-handle" />
+
+        {/* Scrollable body */}
         <div className="sheet-body">
           <div className="sheet-title">Add Recipe</div>
 
@@ -277,27 +283,17 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
 
           {/* URL mode */}
           {mode === 'url' && !loading && (
-            <div>
-              <div className="field">
-                <label>Recipe URL</label>
-                <input type="url" placeholder="https://…" value={urlInput}
-                  onChange={e => setUrlInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleUrl()} />
-              </div>
-              <button className="btn-primary" style={{ width:'100%' }} onClick={handleUrl}>
-                Extract with Claude
-              </button>
+            <div className="field">
+              <label>Recipe URL</label>
+              <input type="url" placeholder="https://…" value={urlInput}
+                onChange={e => setUrlInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleUrl()} />
             </div>
           )}
 
           {/* Photo mode */}
           {mode === 'photo' && !loading && (
-            <div>
-              <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto} />
-              <button className="btn-primary" style={{ width:'100%' }} onClick={() => fileRef.current.click()}>
-                Choose Photo
-              </button>
-            </div>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto} />
           )}
 
           {/* Loading */}
@@ -354,18 +350,36 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
                 <textarea rows={5} value={stepsText} onChange={e => setStepsText(e.target.value)}
                   placeholder={"Preheat oven to 180°C\nMix dry ingredients…"} />
               </div>
-              <div className="field">
+              <div className="field" style={{ marginBottom:0 }}>
                 <label>Tags (comma separated)</label>
                 <input type="text" placeholder="pasta, quick, vegetarian"
                   value={form.tags.join(', ')}
                   onChange={e => setField('tags', e.target.value.split(',').map(t => t.trim()).filter(Boolean))} />
               </div>
-              <button className="btn-primary" style={{ width:'100%', marginTop:4 }} onClick={handleSave}>
-                Save Recipe
-              </button>
             </div>
           )}
         </div>
+
+        {/* Sticky footer — always visible above keyboard / safe area */}
+        {(showSaveButton || showExtractButton) && (
+          <div className="sheet-footer">
+            {showSaveButton && (
+              <button className="btn-primary" style={{ width:'100%' }} onClick={handleSave}>
+                Save Recipe
+              </button>
+            )}
+            {showExtractButton && mode === 'url' && (
+              <button className="btn-primary" style={{ width:'100%' }} onClick={handleUrl}>
+                Extract with Claude
+              </button>
+            )}
+            {showExtractButton && mode === 'photo' && (
+              <button className="btn-primary" style={{ width:'100%' }} onClick={() => fileRef.current.click()}>
+                Choose Photo
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -464,9 +478,9 @@ function RecipeDetailSheet({ recipe, user, onClose, onDeleted, onAddToGrocery })
 
           {/* Ingredient picker for grocery */}
           {showIngPicker && recipe.ingredients?.length > 0 && (
-            <div style={{ background:'var(--bg)', borderRadius:'var(--radius-sm)', padding:12, marginBottom:14 }}>
+            <div style={{ background:'var(--bg)', borderRadius:'var(--radius-sm)', padding:12, marginBottom:8 }}>
               <p style={{ fontWeight:600, marginBottom:10, fontSize:14 }}>Select ingredients to add:</p>
-              <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:12 }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                 {recipe.ingredients.map((ing, i) => (
                   <label key={i} style={{ display:'flex', gap:10, alignItems:'center', fontSize:14, cursor:'pointer',
                     textTransform:'none', letterSpacing:0 }}>
@@ -477,42 +491,49 @@ function RecipeDetailSheet({ recipe, user, onClose, onDeleted, onAddToGrocery })
                   </label>
                 ))}
               </div>
-              <div style={{ display:'flex', gap:8 }}>
-                <button className="btn-primary" style={{ flex:1 }} onClick={handleAddSelected}
-                  disabled={!Object.values(selected).some(Boolean)}>
-                  Add to Groceries
-                </button>
-                <button className="btn-ghost" onClick={() => { setShowIngPicker(false); setSelected({}); }}>
-                  Cancel
-                </button>
-              </div>
             </div>
           )}
+        </div>
 
-          <div style={{ display:'flex', gap:8, marginTop:8 }}>
-            {!showIngPicker && recipe.ingredients?.length > 0 && (
-              <button className="btn-amber" style={{ flex:1 }} onClick={() => {
-                setShowIngPicker(true);
-                const all = {};
-                recipe.ingredients.forEach((_,i) => { all[i] = true; });
-                setSelected(all);
-              }}>
-                + Add to Groceries
+        {/* Sticky footer */}
+        <div className="sheet-footer">
+          {showIngPicker ? (
+            <div style={{ display:'flex', gap:8 }}>
+              <button className="btn-primary" style={{ flex:1 }} onClick={handleAddSelected}
+                disabled={!Object.values(selected).some(Boolean)}>
+                Add to Groceries
               </button>
-            )}
-            {!confirmDelete ? (
-              <button className="btn-ghost" style={{ color:'#c0392b' }} onClick={() => setConfirmDelete(true)}>
-                Delete
+              <button className="btn-ghost" onClick={() => { setShowIngPicker(false); setSelected({}); }}>
+                Cancel
               </button>
-            ) : (
-              <>
-                <button style={{ background:'#c0392b', color:'#fff', flex:1, minHeight:44 }} onClick={handleDelete}>
-                  Confirm Delete
+            </div>
+          ) : (
+            <div style={{ display:'flex', gap:8 }}>
+              {recipe.ingredients?.length > 0 && (
+                <button className="btn-amber" style={{ flex:1 }} onClick={() => {
+                  setShowIngPicker(true);
+                  const all = {};
+                  recipe.ingredients.forEach((_,i) => { all[i] = true; });
+                  setSelected(all);
+                }}>
+                  + Add to Groceries
                 </button>
-                <button className="btn-ghost" onClick={() => setConfirmDelete(false)}>Keep</button>
-              </>
-            )}
-          </div>
+              )}
+              {!confirmDelete ? (
+                <button className="btn-ghost" style={{ color:'#c0392b' }} onClick={() => setConfirmDelete(true)}>
+                  Delete
+                </button>
+              ) : (
+                <>
+                  <button style={{ background:'#c0392b', color:'#fff', flex:1, minHeight:44,
+                    border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer' }} onClick={handleDelete}>
+                    Confirm Delete
+                  </button>
+                  <button className="btn-ghost" onClick={() => setConfirmDelete(false)}>Keep</button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

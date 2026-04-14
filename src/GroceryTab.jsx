@@ -141,11 +141,13 @@ function AddItemSheet({ user, onClose, onAdded }) {
               <label>Amount</label>
               <input type="text" placeholder="2" value={amount} onChange={e => setAmount(e.target.value)} />
             </div>
-            <div className="field">
+            <div className="field" style={{ marginBottom:0 }}>
               <label>Unit</label>
               <input type="text" placeholder="loaves" value={unit} onChange={e => setUnit(e.target.value)} />
             </div>
           </div>
+        </div>
+        <div className="sheet-footer">
           <button className="btn-primary" style={{ width:'100%' }} onClick={handleAdd} disabled={saving}>
             {saving ? 'Categorising…' : 'Add to List'}
           </button>
