@@ -305,7 +305,16 @@ export function removeFromRanking(userName, mealId) {
 // ---------------------------------------------------------------------------
 
 export function getApiKey() {
-  return read(KEYS.apiKey, '');
+  const raw = localStorage.getItem(KEYS.apiKey);
+  if (!raw) return '';
+  try {
+    // New format: JSON-encoded string (set via write())
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'string' ? parsed : '';
+  } catch {
+    // Legacy format: raw string stored without JSON encoding
+    return raw;
+  }
 }
 
 export function setApiKey(key) {
