@@ -63,9 +63,18 @@ Return an object with these exact fields:
 Return ONLY the JSON object, no markdown, no explanation.`;
 
 async function extractFromUrl(url) {
-  return JSON.parse(await callClaude(EXTRACT_SYSTEM,
-    `Extract the recipe from this URL: ${url}\nIf you cannot access it, return a recipe template with title "Recipe from ${url}".`
-  ));
+  // Fetch the actual page content via Jina AI Reader (handles CORS, free, no key needed)
+  let pageContent = '';
+  try {
+    const res = await fetch(`https://r.jina.ai/${url}`);
+    if (res.ok) pageContent = await res.text();
+  } catch { /* fall through to URL-only extraction */ }
+
+  const prompt = pageContent
+    ? `Extract the recipe from this page content:\n\n${pageContent.slice(0, 10000)}`
+    : `Extract the recipe from this URL: ${url}`;
+
+  return JSON.parse(await callClaude(EXTRACT_SYSTEM, prompt));
 }
 
 async function extractFromPhoto(base64, mimeType) {
