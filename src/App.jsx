@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getApiKey, setApiKey, getSettings, saveSettings, _registerPush } from './storage.js';
+import { getApiKey, setApiKey, getSettings, saveSettings, _registerPush, getStoredUser, setStoredUser } from './storage.js';
 import { initSync, teardownSync, pushToFirebase, forceSyncFromFirebase, isFirebaseConfigured } from './sync.js';
 import RecipesTab      from './RecipesTab.jsx';
 import MealPlannerTab  from './MealPlannerTab.jsx';
@@ -17,7 +17,7 @@ const KNOWN_USERS = ['Rory', 'Devon'];
 
 export default function App() {
   const [activeTab,      setActiveTab]      = useState('plan');
-  const [user,           setUser]           = useState('');
+  const [user,           setUser]           = useState(() => getStoredUser());
   const [nameInput,      setNameInput]      = useState('');
   const [showSetup,      setShowSetup]      = useState(false);
   const [showApiKey,     setShowApiKey]     = useState(false);
@@ -51,7 +51,8 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    setShowSetup(true);
+    // Only prompt login if no user is saved
+    if (!getStoredUser()) setShowSetup(true);
     setApiKeyInput(getApiKey());
 
     return () => {
@@ -62,6 +63,7 @@ export default function App() {
 
   function handleSelectUser(name) {
     setUser(name);
+    setStoredUser(name);
     setShowSetup(false);
     if (!getApiKey()) setShowApiKey(true);
   }

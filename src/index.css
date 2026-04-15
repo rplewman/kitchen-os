@@ -34,6 +34,8 @@ body {
   background: var(--bg);
   min-height: 100dvh;
   overflow-x: hidden;
+  /* Prevent browser pull-to-refresh triggering a full page reload */
+  overscroll-behavior-y: none;
 }
 
 #root {

@@ -301,6 +301,18 @@ export function removeFromRanking(userName, mealId) {
 }
 
 // ---------------------------------------------------------------------------
+// Active user (persisted so page reloads don't force re-login)
+// ---------------------------------------------------------------------------
+
+export function getStoredUser() {
+  return localStorage.getItem('kitchen_os_user') || '';
+}
+
+export function setStoredUser(name) {
+  localStorage.setItem('kitchen_os_user', name);
+}
+
+// ---------------------------------------------------------------------------
 // API Key
 // ---------------------------------------------------------------------------
 
