@@ -494,13 +494,67 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
 
 // ── Recipe Detail Sheet ────────────────────────────────────────────────────
 
-function RecipeDetailSheet({ recipe, user, onClose, onDeleted, onAddToGrocery }) {
+function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDeleted, onUpdated, onAddToGrocery }) {
+  const [recipe, setRecipe] = useState(initialRecipe);
+  const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showIngPicker, setShowIngPicker] = useState(false);
   const [selected, setSelected] = useState({});
+
+  // View-mode scaling state
   const baseServings = recipe.servings || 2;
   const [scaledServings, setScaledServings] = useState(baseServings);
   const scaleFactor = scaledServings / baseServings;
+
+  // Edit-mode form state
+  const [editForm, setEditForm] = useState(null);
+
+  function startEdit() {
+    setEditForm({
+      title:        recipe.title        || '',
+      description:  recipe.description  || '',
+      servings:     recipe.servings     || '',
+      difficulty:   recipe.difficulty   || 'medium',
+      timeEstimate: recipe.timeEstimate || '',
+      tags:         recipe.tags         || [],
+      ingText:  (recipe.ingredients || []).map(i => `${i.amount || ''} ${i.unit || ''} ${i.name}`.trim()).join('\n'),
+      stepsText: (recipe.steps || []).join('\n'),
+    });
+    setEditing(true);
+  }
+
+  function setEditField(k, v) { setEditForm(f => ({ ...f, [k]: v })); }
+
+  function parseIngredients(text) {
+    return text.split('\n').filter(Boolean).map(line => {
+      const parts = line.trim().split(/\s+/);
+      const amount = parts[0] || '';
+      const unit = parts.length > 2 ? parts[1] : '';
+      const name = parts.length > 2 ? parts.slice(2).join(' ') : parts.slice(1).join(' ');
+      return { name: name || line, amount, unit, category: 'Other' };
+    });
+  }
+
+  function handleSaveEdit() {
+    if (!editForm.title.trim()) return;
+    const changes = {
+      title:        editForm.title.trim(),
+      description:  editForm.description.trim(),
+      servings:     Number(editForm.servings) || null,
+      difficulty:   editForm.difficulty,
+      timeEstimate: editForm.timeEstimate.trim(),
+      tags:         typeof editForm.tags === 'string'
+                      ? editForm.tags.split(',').map(t => t.trim()).filter(Boolean)
+                      : editForm.tags,
+      ingredients:  parseIngredients(editForm.ingText),
+      steps:        editForm.stepsText.split('\n').filter(Boolean),
+    };
+    const updated = updateRecipe(recipe.id, changes);
+    setRecipe(updated);
+    setScaledServings(updated.servings || 2);
+    setEditing(false);
+    onUpdated?.();
+  }
 
   function scaleAmount(amount) {
     if (!amount) return amount;
@@ -528,6 +582,68 @@ function RecipeDetailSheet({ recipe, user, onClose, onDeleted, onAddToGrocery })
     <div className="sheet-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sheet">
         <div className="sheet-handle" />
+
+        {/* ── Edit mode ── */}
+        {editing ? (
+          <>
+            <div className="sheet-body">
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                <div className="sheet-title" style={{ marginBottom:0 }}>Edit Recipe</div>
+                <button className="btn-ghost" style={{ fontSize:13 }} onClick={() => setEditing(false)}>Cancel</button>
+              </div>
+              <div className="field">
+                <label>Title *</label>
+                <input type="text" value={editForm.title} onChange={e => setEditField('title', e.target.value)} />
+              </div>
+              <div className="field">
+                <label>Description</label>
+                <textarea rows={2} value={editForm.description} onChange={e => setEditField('description', e.target.value)} />
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <div className="field">
+                  <label>Servings</label>
+                  <input type="number" value={editForm.servings} onChange={e => setEditField('servings', e.target.value)} />
+                </div>
+                <div className="field">
+                  <label>Time</label>
+                  <input type="text" placeholder="30 mins" value={editForm.timeEstimate} onChange={e => setEditField('timeEstimate', e.target.value)} />
+                </div>
+              </div>
+              <div className="field">
+                <label>Difficulty</label>
+                <select value={editForm.difficulty} onChange={e => setEditField('difficulty', e.target.value)}>
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Ingredients (one per line, e.g. "2 cups flour")</label>
+                <textarea rows={6} value={editForm.ingText} onChange={e => setEditField('ingText', e.target.value)}
+                  placeholder={"2 cups flour\n1 tsp salt\n200g butter"} />
+              </div>
+              <div className="field">
+                <label>Steps (one per line)</label>
+                <textarea rows={6} value={editForm.stepsText} onChange={e => setEditField('stepsText', e.target.value)} />
+              </div>
+              <div className="field" style={{ marginBottom:0 }}>
+                <label>Tags (comma separated)</label>
+                <input type="text" placeholder="pasta, quick, vegetarian"
+                  value={Array.isArray(editForm.tags) ? editForm.tags.join(', ') : editForm.tags}
+                  onChange={e => setEditField('tags', e.target.value)} />
+              </div>
+            </div>
+            <div className="sheet-footer">
+              <button className="btn-primary" style={{ width:'100%' }}
+                onClick={handleSaveEdit} disabled={!editForm.title.trim()}>
+                Save Changes
+              </button>
+            </div>
+          </>
+        ) : (
+
+        /* ── View mode ── */
+        <>
         <div className="sheet-body">
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:16 }}>
             <h2 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.5rem', lineHeight:1.2 }}>
@@ -659,9 +775,12 @@ function RecipeDetailSheet({ recipe, user, onClose, onDeleted, onAddToGrocery })
                   recipe.ingredients.forEach((_,i) => { all[i] = true; });
                   setSelected(all);
                 }}>
-                  + Add to Groceries
+                  + Groceries
                 </button>
               )}
+              <button className="btn-secondary" style={{ flex:1 }} onClick={startEdit}>
+                Edit
+              </button>
               {!confirmDelete ? (
                 <button className="btn-ghost" style={{ color:'#c0392b' }} onClick={() => setConfirmDelete(true)}>
                   Delete
@@ -678,6 +797,8 @@ function RecipeDetailSheet({ recipe, user, onClose, onDeleted, onAddToGrocery })
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   );
@@ -790,7 +911,8 @@ export default function RecipesTab({ user, tick, macrosEnabled }) {
           recipe={selected}
           user={user}
           onClose={() => setSelected(null)}
-          onDeleted={() => refresh()}
+          onDeleted={() => { refresh(); }}
+          onUpdated={() => refresh()}
           onAddToGrocery={() => { showToast('Added to grocery list!'); setSelected(null); }}
         />
       )}
