@@ -108,23 +108,19 @@ export default function App() {
         ))}
       </nav>
 
-      {/* ── Firebase sync dot — tap to force sync ── */}
+      {/* ── Sync button (top-left, mirrors settings button on right) ── */}
       {isFirebaseConfigured && (
         <button
+          className="btn-icon"
           onClick={handleForceSync}
           title="Tap to sync now"
           style={{
             position:'fixed', top:'calc(env(safe-area-inset-top, 0px) + 8px)', left:12, zIndex:60,
-            background:'none', border:'none', padding:8, cursor:'pointer',
-            display:'flex', alignItems:'center', justifyContent:'center',
+            fontSize:18, background:'var(--card)', boxShadow:'var(--shadow)',
+            animation: syncing ? 'spin 0.7s linear infinite' : 'none',
           }}
         >
-          <div style={{
-            width:10, height:10, borderRadius:'50%',
-            background: syncing ? 'var(--amber)' : '#4caf50',
-            boxShadow:'0 0 0 2px #fff',
-            animation: syncing ? 'spin 0.7s linear infinite' : 'none',
-          }} />
+          🔄
         </button>
       )}
 
