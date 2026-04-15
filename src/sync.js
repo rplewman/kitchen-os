@@ -11,7 +11,7 @@
  */
 
 import { db, isFirebaseConfigured } from './firebase.js';
-import { ref, set, onValue, off }   from 'firebase/database';
+import { ref, set, onValue, off, get } from 'firebase/database';
 
 const ROOT = 'kitchen_os';
 const STORAGE_KEYS = [
@@ -95,6 +95,18 @@ export function initSync(onRemoteChange) {
 
 export function teardownSync() {
   if (listenerRef) off(listenerRef);
+}
+
+/** One-shot forced read from Firebase — use when app comes back to foreground. */
+export function forceSyncFromFirebase(onRemoteChange) {
+  if (!isFirebaseConfigured) return;
+  get(ref(db, ROOT)).then(snapshot => {
+    const remote = snapshot.val();
+    if (remote) {
+      applyRemoteSnapshot(remote);
+      onRemoteChange();
+    }
+  }).catch(err => console.warn('Force sync error:', err));
 }
 
 export { isFirebaseConfigured };

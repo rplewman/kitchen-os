@@ -525,7 +525,7 @@ export default function MealPlannerTab({ user, tick: remoteTick, macrosEnabled }
       )}
 
       {/* Sticky "Add week to groceries" */}
-      <div style={{ position:'sticky', bottom:'calc(var(--tab-h) + 8px)', padding:'0 16px', zIndex:10 }}>
+      <div style={{ position:'sticky', bottom:'calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 8px)', padding:'0 16px', zIndex:10 }}>
         <button className="btn-amber" style={{ width:'100%', fontSize:15, boxShadow:'var(--shadow-lg)' }}
           onClick={handleAddWeekToGroceries}>
           🛒 Add week to groceries

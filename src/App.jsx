@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getApiKey, setApiKey, getSettings, saveSettings, _registerPush } from './storage.js';
-import { initSync, teardownSync, pushToFirebase, isFirebaseConfigured } from './sync.js';
+import { initSync, teardownSync, pushToFirebase, forceSyncFromFirebase, isFirebaseConfigured } from './sync.js';
 import RecipesTab      from './RecipesTab.jsx';
 import MealPlannerTab  from './MealPlannerTab.jsx';
 import GroceryTab      from './GroceryTab.jsx';
@@ -35,10 +35,20 @@ export default function App() {
     // Start two-way Firebase sync
     initSync(bumpTick);
 
+    // Re-pull from Firebase whenever the app comes back to the foreground
+    // (handles mobile background → foreground, tab switching, etc.)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') forceSyncFromFirebase(bumpTick);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     setShowSetup(true);
     setApiKeyInput(getApiKey());
 
-    return () => teardownSync();
+    return () => {
+      teardownSync();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [bumpTick]);
 
   function handleSelectUser(name) {
@@ -92,7 +102,7 @@ export default function App() {
       {/* ── Firebase sync status dot ── */}
       {isFirebaseConfigured && (
         <div title="Live sync active" style={{
-          position:'fixed', top:16, left:16, zIndex:60,
+          position:'fixed', top:'calc(env(safe-area-inset-top, 0px) + 16px)', left:16, zIndex:60,
           width:8, height:8, borderRadius:'50%', background:'#4caf50',
           boxShadow:'0 0 0 2px #fff',
         }} />
@@ -102,7 +112,7 @@ export default function App() {
       {user && (
         <button
           className="btn-icon"
-          style={{ position:'fixed', top:8, right:12, zIndex:60, fontSize:18, background:'var(--card)', boxShadow:'var(--shadow)' }}
+          style={{ position:'fixed', top:'calc(env(safe-area-inset-top, 0px) + 8px)', right:12, zIndex:60, fontSize:18, background:'var(--card)', boxShadow:'var(--shadow)' }}
           onClick={() => { setShowApiKey(true); setApiKeyInput(getApiKey()); }}
           title="Settings"
         >

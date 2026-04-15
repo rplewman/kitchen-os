@@ -171,7 +171,7 @@ button:active { transform: scale(0.97); }
 /* ── Inputs ── */
 input[type="text"], input[type="url"], input[type="number"], textarea, select {
   font-family: 'DM Sans', sans-serif;
-  font-size: 15px;
+  font-size: 16px; /* 16px minimum prevents iOS auto-zoom on focus */
   width: 100%;
   background: var(--bg);
   border: 1.5px solid var(--border);
@@ -207,12 +207,14 @@ label {
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  height: var(--tab-h);
+  /* Tab buttons get --tab-h; safe area extends below them */
+  height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
   background: var(--card);
   border-top: 1px solid var(--border);
   display: flex;
+  align-items: flex-start;
   z-index: 50;
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .tab-btn {
@@ -277,7 +279,7 @@ label {
 .tab-content {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: calc(var(--tab-h) + 16px);
+  padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 16px);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -321,10 +323,11 @@ label {
 .swipe-delete-bg {
   position: absolute;
   right: 0; top: 0; bottom: 0;
+  width: 56px;
   background: #e53935;
   display: flex;
   align-items: center;
-  padding-right: 20px;
+  justify-content: center;
   color: #fff;
   font-size: 20px;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
