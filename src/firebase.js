@@ -18,9 +18,13 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase }   from 'firebase/database';
 
 // Vite exposes env vars via import.meta.env.VITE_*
-const envConfig = import.meta.env.VITE_FIREBASE_CONFIG
-  ? JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG)
-  : null;
+let envConfig = null;
+try {
+  if (import.meta.env.VITE_FIREBASE_CONFIG)
+    envConfig = JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG);
+} catch (e) {
+  console.warn('VITE_FIREBASE_CONFIG is not valid JSON — Firebase disabled.', e.message);
+}
 
 const firebaseConfig = envConfig || {
   apiKey:            import.meta.env.VITE_FB_API_KEY            || '',
