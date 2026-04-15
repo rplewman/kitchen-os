@@ -62,16 +62,28 @@ Return an object with these exact fields:
 }
 Return ONLY the JSON object, no markdown, no explanation.`;
 
-async function extractFromUrl(url) {
-  // Fetch the actual page content via Jina AI Reader (handles CORS, free, no key needed)
-  let pageContent = '';
+async function fetchPageContent(url) {
   try {
-    const res = await fetch(`https://r.jina.ai/${url}`);
-    if (res.ok) pageContent = await res.text();
-  } catch { /* fall through to URL-only extraction */ }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(`https://r.jina.ai/${url}`, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return '';
+    const text = await res.text();
+    return text.length > 300 ? text : ''; // discard suspiciously short responses
+  } catch {
+    return '';
+  }
+}
+
+async function extractFromUrl(url, onStatus) {
+  onStatus?.('Fetching page…');
+  const pageContent = await fetchPageContent(url);
+
+  onStatus?.(pageContent ? 'Extracting recipe with Claude…' : 'Extracting with Claude (no page content fetched)…');
 
   const prompt = pageContent
-    ? `Extract the recipe from this page content:\n\n${pageContent.slice(0, 10000)}`
+    ? `Extract the recipe from this page content:\n\n${pageContent.slice(0, 12000)}`
     : `Extract the recipe from this URL: ${url}`;
 
   return JSON.parse(await callClaude(EXTRACT_SYSTEM, prompt));
@@ -241,6 +253,7 @@ const BLANK_RECIPE = {
 function AddRecipeSheet({ user, onClose, onSaved }) {
   const [mode,       setMode]       = useState('manual'); // 'url'|'photo'|'manual'
   const [loading,    setLoading]    = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState('');
   const [error,      setError]      = useState('');
   const [form,       setForm]       = useState(BLANK_RECIPE);
   const [urlInput,   setUrlInput]   = useState('');
@@ -252,16 +265,16 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
 
   async function handleUrl() {
     if (!urlInput.trim()) return;
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setLoadingMsg('Fetching page…');
     try {
-      const data = await extractFromUrl(urlInput.trim());
+      const data = await extractFromUrl(urlInput.trim(), setLoadingMsg);
       setForm({ ...BLANK_RECIPE, ...data, sourceType:'url', sourceUrl: urlInput.trim() });
       setIngText(data.ingredients?.map(i => `${i.amount} ${i.unit} ${i.name}`.trim()).join('\n') || '');
       setStepsText(data.steps?.join('\n') || '');
-      setMode('manual'); // show the editable form
+      setMode('manual');
     } catch(e) {
       setError(e.message || 'Could not extract recipe. Check your API key or try manual entry.');
-    } finally { setLoading(false); }
+    } finally { setLoading(false); setLoadingMsg(''); }
   }
 
   async function handlePhoto(e) {
@@ -371,7 +384,7 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
           {loading && (
             <div style={{ textAlign:'center', padding:'32px 0' }}>
               <div className="spinner" style={{ marginBottom:12 }} />
-              <p style={{ color:'var(--text-muted)', fontSize:14 }}>Extracting recipe with Claude…</p>
+              <p style={{ color:'var(--text-muted)', fontSize:14 }}>{loadingMsg || 'Extracting recipe with Claude…'}</p>
             </div>
           )}
 
