@@ -812,11 +812,12 @@ function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDeleted, on
 // ── Main Tab ───────────────────────────────────────────────────────────────
 
 export default function RecipesTab({ user, tick, macrosEnabled }) {
-  const [recipes,     setRecipes]     = useState(() => getRecipes());
-  const [showAdd,     setShowAdd]     = useState(false);
-  const [selected,    setSelected]    = useState(null);
-  const [search,      setSearch]      = useState('');
-  const [toastMsg,    setToastMsg]    = useState('');
+  const [recipes,       setRecipes]       = useState(() => getRecipes());
+  const [showAdd,       setShowAdd]       = useState(false);
+  const [selected,      setSelected]      = useState(null);
+  const [search,        setSearch]        = useState('');
+  const [toastMsg,      setToastMsg]      = useState('');
+  const [planRecipe,    setPlanRecipe]    = useState(null); // recipe waiting for day selection
 
   // Re-read when Firebase pushes a remote change
   useEffect(() => { setRecipes(getRecipes()); }, [tick]);
@@ -829,15 +830,14 @@ export default function RecipesTab({ user, tick, macrosEnabled }) {
   function refresh() { setRecipes(getRecipes()); }
 
   function handlePlanThisWeek(recipe) {
+    setPlanRecipe(recipe); // open day picker
+  }
+
+  function handlePickDay(dayKey, dayLabel) {
     const weekKey = getISOWeekKey();
-    const week = getWeek(weekKey);
-    const emptyDayIdx = DAY_KEYS.findIndex(d => (week[d]?.meals || []).length === 0);
-    if (emptyDayIdx === -1) {
-      showToast('Every day is already planned this week!');
-      return;
-    }
-    addDayMeal(weekKey, DAY_KEYS[emptyDayIdx], { mealName: recipe.title, recipeId: recipe.id });
-    showToast(`Added to ${DAY_LABEL[emptyDayIdx]}!`);
+    addDayMeal(weekKey, dayKey, { mealName: planRecipe.title, recipeId: planRecipe.id });
+    setPlanRecipe(null);
+    showToast(`Added to ${dayLabel}!`);
   }
 
   const filtered = recipes.filter(r =>
@@ -921,6 +921,55 @@ export default function RecipesTab({ user, tick, macrosEnabled }) {
           onAddToGrocery={() => { showToast('Added to grocery list!'); setSelected(null); }}
         />
       )}
+
+      {/* Day picker sheet */}
+      {planRecipe && (() => {
+        const weekKey = getISOWeekKey();
+        const week    = getWeek(weekKey);
+        return (
+          <div className="sheet-overlay" onClick={e => { if (e.target === e.currentTarget) setPlanRecipe(null); }}>
+            <div className="sheet">
+              <div className="sheet-handle" />
+              <div className="sheet-body" style={{ paddingBottom:24 }}>
+                <div className="sheet-title" style={{ marginBottom:8 }}>Add to which day?</div>
+                <p style={{ fontSize:13, color:'var(--text-muted)', marginBottom:20 }}>
+                  {planRecipe.title}
+                </p>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {DAY_KEYS.map((key, i) => {
+                    const meals = week[key]?.meals || [];
+                    const hasMeals = meals.length > 0;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handlePickDay(key, DAY_LABEL[i])}
+                        style={{
+                          display:'flex', alignItems:'center', justifyContent:'space-between',
+                          background: hasMeals ? 'var(--bg)' : 'var(--card)',
+                          border:`1.5px solid ${hasMeals ? 'var(--border)' : 'var(--green)'}`,
+                          borderRadius:'var(--radius-sm)', padding:'12px 16px',
+                          color: hasMeals ? 'var(--text-muted)' : 'var(--green)',
+                          fontWeight: hasMeals ? 400 : 600, fontSize:15,
+                        }}
+                      >
+                        <span>{DAY_LABEL[i]}</span>
+                        {hasMeals ? (
+                          <span style={{ fontSize:12, color:'var(--text-muted)' }}>
+                            {meals.map(m => m.mealName).join(', ').slice(0, 32)}
+                            {meals.map(m => m.mealName).join(', ').length > 32 ? '…' : ''}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize:12, color:'var(--green)', opacity:0.7 }}>empty</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Toast */}
       {toastMsg && (
