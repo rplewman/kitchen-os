@@ -21,6 +21,11 @@ async function callClaude(systemPrompt, userContent) {
   return msg.content[0].text;
 }
 
+// Strip markdown code fences that Claude sometimes wraps JSON in despite instructions
+function parseJson(text) {
+  return JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim());
+}
+
 // ── Background macro estimation ────────────────────────────────────────────
 
 const MACRO_SYSTEM = `You estimate nutritional macros for a recipe and return ONLY valid JSON.
@@ -44,7 +49,7 @@ export async function estimateMacros(recipe) {
       messages: [{ role: 'user', content:
         `Recipe: ${recipe.title}\nServings: ${recipe.servings || 2}\nIngredients: ${ingList}` }],
     });
-    return JSON.parse(msg.content[0].text);
+    return parseJson(msg.content[0].text);
   } catch { return null; }
 }
 
@@ -86,7 +91,7 @@ async function extractFromUrl(url, onStatus) {
     ? `Extract the recipe from this page content:\n\n${pageContent.slice(0, 12000)}`
     : `Extract the recipe from this URL: ${url}`;
 
-  return JSON.parse(await callClaude(EXTRACT_SYSTEM, prompt));
+  return parseJson(await callClaude(EXTRACT_SYSTEM, prompt));
 }
 
 // Resize an image File to maxDimension on longest side, returns a data-URL (JPEG)
@@ -121,7 +126,7 @@ async function extractFromPhoto(base64, mimeType) {
       }, { type: 'text', text: 'Extract the recipe from this image.' }],
     }],
   });
-  return JSON.parse(msg.content[0].text);
+  return parseJson(msg.content[0].text);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
