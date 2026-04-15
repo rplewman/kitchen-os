@@ -157,7 +157,7 @@ function DayMealSheet({ day, weekKey, daySlot, onClose, onAssigned }) {
                 <input type="text" placeholder="Type a meal name…" value={freeform}
                   onChange={e => setFreeform(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && doAddFreeform()}
-                  style={{ flex:1 }} autoFocus />
+                  style={{ flex:1 }} />
                 <button className="btn-primary" style={{ minWidth:70 }} onClick={doAddFreeform}>
                   Add
                 </button>
@@ -180,7 +180,7 @@ function DayMealSheet({ day, weekKey, daySlot, onClose, onAssigned }) {
                 </p>
               )}
 
-              <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:260, overflowY:'auto' }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {filtered.map(r => {
                   const alreadyAdded = localMeals.some(m => m.recipeId === r.id);
                   return (
