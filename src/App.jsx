@@ -24,19 +24,28 @@ export default function App() {
   const [apiKeyInput,    setApiKeyInput]    = useState('');
   const [macrosEnabled,  setMacrosEnabled]  = useState(() => getSettings().macrosEnabled);
   // tick increments whenever Firebase pushes a remote change → tabs re-read localStorage
-  const [tick, setTick] = useState(0);
+  const [tick,       setTick]       = useState(0);
+  const [syncing,    setSyncing]    = useState(false);
 
   const bumpTick = useCallback(() => setTick(t => t + 1), []);
+
+  const handleForceSync = useCallback(() => {
+    setSyncing(true);
+    forceSyncFromFirebase(() => { bumpTick(); setSyncing(false); });
+    setTimeout(() => setSyncing(false), 3000); // safety timeout
+  }, [bumpTick]);
 
   useEffect(() => {
     // Wire up push-to-Firebase on every storage write
     _registerPush(pushToFirebase);
 
-    // Start two-way Firebase sync
+    // Start two-way Firebase sync (persistent listener)
     initSync(bumpTick);
 
-    // Re-pull from Firebase whenever the app comes back to the foreground
-    // (handles mobile background → foreground, tab switching, etc.)
+    // Also do a one-shot pull on mount — safety net in case onValue is slow
+    forceSyncFromFirebase(bumpTick);
+
+    // Re-pull whenever app comes back to foreground (mobile background → foreground)
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') forceSyncFromFirebase(bumpTick);
     };
@@ -99,13 +108,24 @@ export default function App() {
         ))}
       </nav>
 
-      {/* ── Firebase sync status dot ── */}
+      {/* ── Firebase sync dot — tap to force sync ── */}
       {isFirebaseConfigured && (
-        <div title="Live sync active" style={{
-          position:'fixed', top:'calc(env(safe-area-inset-top, 0px) + 16px)', left:16, zIndex:60,
-          width:8, height:8, borderRadius:'50%', background:'#4caf50',
-          boxShadow:'0 0 0 2px #fff',
-        }} />
+        <button
+          onClick={handleForceSync}
+          title="Tap to sync now"
+          style={{
+            position:'fixed', top:'calc(env(safe-area-inset-top, 0px) + 8px)', left:12, zIndex:60,
+            background:'none', border:'none', padding:8, cursor:'pointer',
+            display:'flex', alignItems:'center', justifyContent:'center',
+          }}
+        >
+          <div style={{
+            width:10, height:10, borderRadius:'50%',
+            background: syncing ? 'var(--amber)' : '#4caf50',
+            boxShadow:'0 0 0 2px #fff',
+            animation: syncing ? 'spin 0.7s linear infinite' : 'none',
+          }} />
+        </button>
       )}
 
       {/* ── Settings button (top-right) ── */}
