@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   getRecipes, saveRecipe, updateRecipe, deleteRecipe,
   addIngredientsToGrocery, getApiKey,
@@ -87,6 +87,24 @@ async function extractFromUrl(url, onStatus) {
     : `Extract the recipe from this URL: ${url}`;
 
   return JSON.parse(await callClaude(EXTRACT_SYSTEM, prompt));
+}
+
+// Resize an image File to maxDimension on longest side, returns a data-URL (JPEG)
+function resizeImage(file, maxDimension) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const blobUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = blobUrl;
+  });
 }
 
 async function extractFromPhoto(base64, mimeType) {
@@ -259,8 +277,6 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
   const [urlInput,   setUrlInput]   = useState('');
   const [ingText,    setIngText]    = useState(''); // raw ingredient text for manual
   const [stepsText,  setStepsText]  = useState(''); // raw steps text for manual
-  const fileRef = useRef();
-
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   async function handleUrl() {
@@ -278,30 +294,26 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
   }
 
   async function handlePhoto(e) {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setLoadingMsg('Processing photo…');
     try {
-      const base64 = await new Promise((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = ev => res(ev.target.result.split(',')[1]);
-        reader.onerror = rej;
-        reader.readAsDataURL(file);
-      });
-      const data = await extractFromPhoto(base64, file.type);
-      // Save thumbnail
-      const thumbBase64 = await new Promise(res => {
-        const reader = new FileReader();
-        reader.onload = ev => res(ev.target.result);
-        reader.readAsDataURL(file);
-      });
-      setForm({ ...BLANK_RECIPE, ...data, sourceType:'photo', imageData: thumbBase64 });
+      // Resize to ≤1024px for Claude (keeps API payload small and fast)
+      const apiDataUrl = await resizeImage(file, 1024);
+      const base64 = apiDataUrl.split(',')[1];
+
+      setLoadingMsg('Extracting recipe with Claude…');
+      const data = await extractFromPhoto(base64, 'image/jpeg');
+
+      // Store a smaller thumbnail to keep Firebase/localStorage lean
+      const thumbDataUrl = await resizeImage(file, 400);
+      setForm({ ...BLANK_RECIPE, ...data, sourceType:'photo', imageData: thumbDataUrl });
       setIngText(data.ingredients?.map(i => `${i.amount} ${i.unit} ${i.name}`.trim()).join('\n') || '');
       setStepsText(data.steps?.join('\n') || '');
       setMode('manual');
     } catch(e) {
       setError(e.message || 'Could not read photo. Check your API key or try manual entry.');
-    } finally { setLoading(false); }
+    } finally { setLoading(false); setLoadingMsg(''); }
   }
 
   function parseIngredients(text) {
@@ -375,9 +387,12 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
             </div>
           )}
 
-          {/* Photo mode */}
+          {/* Photo mode — instructions shown in body; file input lives in footer label */}
           {mode === 'photo' && !loading && (
-            <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto} />
+            <div style={{ textAlign:'center', padding:'24px 0 8px', color:'var(--text-muted)', fontSize:14, lineHeight:1.6 }}>
+              <div style={{ fontSize:40, marginBottom:8 }}>📷</div>
+              <p>Take a photo or choose an image of a recipe.<br/>Claude will extract the details for you.</p>
+            </div>
           )}
 
           {/* Loading */}
@@ -458,9 +473,17 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
               </button>
             )}
             {showExtractButton && mode === 'photo' && (
-              <button className="btn-primary" style={{ width:'100%' }} onClick={() => fileRef.current.click()}>
+              /* label wrapping the file input is the only reliable way to open
+                 the file picker on iOS Safari — programmatic .click() is blocked */
+              <label style={{
+                display:'flex', alignItems:'center', justifyContent:'center',
+                width:'100%', minHeight:44, borderRadius:'var(--radius-sm)',
+                background:'var(--green)', color:'#fff',
+                fontSize:15, fontWeight:500, cursor:'pointer',
+              }}>
+                <input type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto} />
                 Choose Photo
-              </button>
+              </label>
             )}
           </div>
         )}
