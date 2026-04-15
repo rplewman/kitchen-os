@@ -117,7 +117,7 @@ export default function App() {
           onClick={handleForceSync}
           title="Tap to sync now"
           style={{
-            position:'fixed', top:'calc(env(safe-area-inset-top, 0px) + 8px)', left:12, zIndex:60,
+            position:'fixed', top:'calc(var(--safe-top) + 8px)', left:12, zIndex:'var(--z-fixed)',
             fontSize:18, background:'var(--card)', boxShadow:'var(--shadow)',
             animation: syncing ? 'spin 0.7s linear infinite' : 'none',
           }}
@@ -130,7 +130,7 @@ export default function App() {
       {user && (
         <button
           className="btn-icon"
-          style={{ position:'fixed', top:'calc(env(safe-area-inset-top, 0px) + 8px)', right:12, zIndex:60, fontSize:18, background:'var(--card)', boxShadow:'var(--shadow)' }}
+          style={{ position:'fixed', top:'calc(var(--safe-top) + 8px)', right:12, zIndex:'var(--z-fixed)', fontSize:18, background:'var(--card)', boxShadow:'var(--shadow)' }}
           onClick={() => { setShowApiKey(true); setApiKeyInput(getApiKey()); }}
           title="Settings"
         >

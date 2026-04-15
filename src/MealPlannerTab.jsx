@@ -525,7 +525,7 @@ export default function MealPlannerTab({ user, tick: remoteTick, macrosEnabled }
       )}
 
       {/* Sticky "Add week to groceries" */}
-      <div style={{ position:'sticky', bottom:'calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 8px)', padding:'0 16px', zIndex:10 }}>
+      <div style={{ position:'sticky', bottom:'calc(var(--tab-bar-h) + 8px)', padding:'0 16px', zIndex:'var(--z-sticky)' }}>
         <button className="btn-amber" style={{ width:'100%', fontSize:15, boxShadow:'var(--shadow-lg)' }}
           onClick={handleAddWeekToGroceries}>
           🛒 Add week to groceries
@@ -545,9 +545,9 @@ export default function MealPlannerTab({ user, tick: remoteTick, macrosEnabled }
 
       {toast && (
         <div style={{
-          position:'fixed', bottom:80, left:'50%', transform:'translateX(-50%)',
+          position:'fixed', bottom:'var(--toast-bottom)', left:'50%', transform:'translateX(-50%)',
           background:'var(--green)', color:'#fff', padding:'10px 20px',
-          borderRadius:99, fontSize:14, fontWeight:600, zIndex:200,
+          borderRadius:99, fontSize:14, fontWeight:600, zIndex:'var(--z-toast)',
           boxShadow:'var(--shadow-lg)', whiteSpace:'nowrap',
         }}>
           {toast}

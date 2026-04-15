@@ -221,7 +221,7 @@ function AddFromRecipeSheet({ user, onClose, onAdded }) {
                   No recipes saved yet.
                 </p>
               )}
-              <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:480, overflowY:'auto' }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {recipes.map(r => (
                   <button
                     key={r.id}
@@ -247,7 +247,7 @@ function AddFromRecipeSheet({ user, onClose, onAdded }) {
               <p style={{ fontSize:13, color:'var(--text-muted)', marginBottom:14 }}>
                 Select ingredients to add:
               </p>
-              <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:360, overflowY:'auto', marginBottom:16 }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
                 {(recipe.ingredients || []).map((ing, i) => (
                   <label key={i} style={{
                     display:'flex', gap:12, alignItems:'center', fontSize:14,
@@ -451,9 +451,9 @@ export default function GroceryTab({ user, tick }) {
       {/* Toast */}
       {toast && (
         <div style={{
-          position:'fixed', bottom:80, left:'50%', transform:'translateX(-50%)',
+          position:'fixed', bottom:'var(--toast-bottom)', left:'50%', transform:'translateX(-50%)',
           background:'var(--green)', color:'#fff', padding:'10px 20px',
-          borderRadius:99, fontSize:14, fontWeight:600, zIndex:200,
+          borderRadius:99, fontSize:14, fontWeight:600, zIndex:'var(--z-toast)',
           boxShadow:'var(--shadow-lg)', whiteSpace:'nowrap',
         }}>
           {toast}

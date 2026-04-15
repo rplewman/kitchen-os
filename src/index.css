@@ -18,6 +18,23 @@
   --radius-sm:   8px;
   --tab-h:       64px;
 
+  /* Safe-area helpers (resolve once here, reuse everywhere) */
+  --safe-top:    env(safe-area-inset-top,    0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Total tab bar height including safe area */
+  --tab-bar-h:   calc(var(--tab-h) + var(--safe-bottom));
+
+  /* Toast sits just above the tab bar */
+  --toast-bottom: calc(var(--tab-bar-h) + 12px);
+
+  /* Z-index scale */
+  --z-sticky:  10;
+  --z-tabs:    50;
+  --z-fixed:   60;
+  --z-overlay: 100;
+  --z-toast:   200;
+
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.5;
@@ -121,7 +138,7 @@ button:active { transform: scale(0.97); }
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.45);
-  z-index: 100;
+  z-index: var(--z-overlay);
   display: flex;
   align-items: flex-end;
   animation: fadeIn 0.2s ease;
@@ -156,7 +173,7 @@ button:active { transform: scale(0.97); }
 
 /* Sticky footer that always sits above the safe area */
 .sheet-footer {
-  padding: 12px 20px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  padding: 12px 20px calc(var(--safe-bottom) + 16px);
   flex-shrink: 0;
   border-top: 1px solid var(--border);
   background: var(--card);
@@ -209,14 +226,13 @@ label {
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  /* Tab buttons get --tab-h; safe area extends below them */
-  height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
+  height: var(--tab-bar-h);
   background: var(--card);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: flex-start;
-  z-index: 50;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: var(--z-tabs);
+  padding-bottom: var(--safe-bottom);
 }
 
 .tab-btn {
@@ -281,7 +297,7 @@ label {
 .tab-content {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 16px);
+  padding-bottom: calc(var(--tab-bar-h) + 16px);
   -webkit-overflow-scrolling: touch;
 }
 
