@@ -21,9 +21,17 @@ async function callClaude(systemPrompt, userContent) {
   return msg.content[0].text;
 }
 
-// Strip markdown code fences that Claude sometimes wraps JSON in despite instructions
+// Robustly extract JSON from Claude's response regardless of any surrounding text or fences
 function parseJson(text) {
-  return JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim());
+  // 1. Try direct parse first
+  try { return JSON.parse(text.trim()); } catch {}
+  // 2. Strip markdown code fences and retry
+  const stripped = text.replace(/^```(?:json)?\s*/im, '').replace(/```\s*$/m, '').trim();
+  try { return JSON.parse(stripped); } catch {}
+  // 3. Find the first {...} block in the response (handles preamble text)
+  const match = stripped.match(/\{[\s\S]*\}/);
+  if (match) return JSON.parse(match[0]);
+  throw new SyntaxError('No valid JSON found in Claude response');
 }
 
 // ── Background macro estimation ────────────────────────────────────────────

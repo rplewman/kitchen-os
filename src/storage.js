@@ -234,17 +234,45 @@ export function clearCheckedItems() {
 }
 
 export function addIngredientsToGrocery(ingredients, addedBy, fromRecipeId, weekKey = null) {
+  let list = getGrocery();
+
   ingredients.forEach(ing => {
-    addGroceryItem({
-      name: ing.name,
-      amount: ing.amount || '',
-      unit: ing.unit || '',
-      category: ing.category || 'Other',
-      addedBy,
-      fromRecipeId,
-      weekKey,
-    });
+    const normalizedName = ing.name.trim().toLowerCase();
+    const existingIdx = list.findIndex(
+      item => !item.checked && item.name.trim().toLowerCase() === normalizedName
+    );
+
+    if (existingIdx !== -1) {
+      // Item already on list — try to merge amounts
+      const existing = list[existingIdx];
+      const existingAmt = parseFloat(existing.amount);
+      const newAmt = parseFloat(ing.amount || '');
+      const sameUnit = (existing.unit || '').toLowerCase() === (ing.unit || '').toLowerCase();
+
+      if (!isNaN(existingAmt) && !isNaN(newAmt) && sameUnit) {
+        const merged = existingAmt + newAmt;
+        list[existingIdx] = {
+          ...existing,
+          amount: Number.isInteger(merged) ? String(merged) : parseFloat(merged.toFixed(2)).toString(),
+        };
+      }
+      // Incompatible units or non-numeric — keep existing row, skip duplicate
+    } else {
+      list = [...list, {
+        id: generateId(),
+        checked: false,
+        category: ing.category || 'Other',
+        fromRecipeId,
+        name: ing.name,
+        amount: ing.amount || '',
+        unit: ing.unit || '',
+        addedBy,
+        weekKey: weekKey || null,
+      }];
+    }
   });
+
+  write(KEYS.grocery, list);
 }
 
 // ---------------------------------------------------------------------------
