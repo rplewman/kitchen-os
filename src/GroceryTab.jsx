@@ -48,9 +48,8 @@ function GroceryItem({ item, onToggle, onDelete, onEdit, onSearch }) {
   function onTouchEnd(e) {
     if (touchStartX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (dx < -60) { setSwiped(true); }
-    else if (dx > 60) { onToggle(item); setSwiped(false); }
-    else if (dx > 20) { setSwiped(false); }
+    if (dx < -60) { setSwiped(true); }        // swipe left → reveal delete
+    else if (Math.abs(dx) > 20) { setSwiped(false); } // any other swipe → reset
     touchStartX.current = null;
   }
 
@@ -71,18 +70,18 @@ function GroceryItem({ item, onToggle, onDelete, onEdit, onSearch }) {
           opacity: item.checked ? 0.5 : 1,
         }}
       >
-        {/* Circular checkbox */}
+        {/* Circular checkbox — intentional tap only, no swipe trigger */}
         <div
           onClick={() => onToggle(item)}
           style={{
-            width:26, height:26, borderRadius:'50%', flexShrink:0, cursor:'pointer',
+            width:32, height:32, borderRadius:'50%', flexShrink:0, cursor:'pointer',
             border:`2px solid ${item.checked ? 'var(--green)' : 'var(--border)'}`,
             background: item.checked ? 'var(--green)' : 'transparent',
             display:'flex', alignItems:'center', justifyContent:'center',
             transition:'background 0.15s, border-color 0.15s',
           }}
         >
-          {item.checked && <span style={{ color:'#fff', fontSize:13, lineHeight:1 }}>✓</span>}
+          {item.checked && <span style={{ color:'#fff', fontSize:14, lineHeight:1 }}>✓</span>}
         </div>
 
         {/* Name + meta */}
