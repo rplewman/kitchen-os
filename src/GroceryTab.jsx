@@ -104,7 +104,7 @@ function GroceryItem({ item, onToggle, onDelete, onEdit, onSearch }) {
               onMouseEnter={e => e.currentTarget.style.color = 'var(--text-muted)'}
               onMouseLeave={e => e.currentTarget.style.color = 'var(--border)'}
             >
-              🔍
+              🪄
             </button>
           </div>
           {editingQty ? (

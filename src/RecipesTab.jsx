@@ -700,7 +700,7 @@ function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDeleted, on
                         color:'var(--text-muted)', padding:'2px 4px', minHeight:'unset',
                         lineHeight:1, flexShrink:0 }}
                     >
-                      🔍
+                      🪄
                     </button>
                   </li>
                 ))}
