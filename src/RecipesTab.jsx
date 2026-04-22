@@ -481,7 +481,7 @@ function AddRecipeSheet({ user, onClose, onSaved }) {
 
 // ── Recipe Detail Sheet ────────────────────────────────────────────────────
 
-function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDeleted, onUpdated, onAddToGrocery }) {
+export function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDeleted, onUpdated, onAddToGrocery }) {
   const [recipe, setRecipe] = useState(initialRecipe);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);

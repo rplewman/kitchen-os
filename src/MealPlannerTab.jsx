@@ -4,6 +4,7 @@ import {
   getAdjacentWeekKey, getMondayOfWeek,
   getRecipes, addIngredientsToGrocery,
 } from './storage.js';
+import { RecipeDetailSheet } from './RecipesTab.jsx';
 
 const DAY_KEYS  = ['mon','tue','wed','thu','fri','sat','sun'];
 const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -27,7 +28,7 @@ function weekLabel(weekKey) {
 // ── Add Meal Sheet ─────────────────────────────────────────────────────────
 // Opens when tapping a day. Shows existing meals + ability to add more.
 
-function DayMealSheet({ day, weekKey, daySlot, onClose, onAssigned }) {
+function DayMealSheet({ day, weekKey, daySlot, onClose, onAssigned, onViewRecipe }) {
   const recipes  = getRecipes();
   const meals    = daySlot?.meals || [];
   const [search,   setSearch]   = useState('');
@@ -111,20 +112,32 @@ function DayMealSheet({ day, weekKey, daySlot, onClose, onAssigned }) {
                     background:'var(--bg)', borderRadius:'var(--radius-sm)',
                     border:'1.5px solid var(--border)',
                   }}>
-                    <div style={{ flex:1 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
                       <p style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.05rem', fontWeight:600, lineHeight:1.2 }}>
                         {m.mealName}
                       </p>
-                      {recipe?.difficulty && (
-                        <span className={`pill pill-${recipe.difficulty}`} style={{ fontSize:11, marginTop:4 }}>
-                          {recipe.difficulty}
-                        </span>
-                      )}
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
+                        {recipe?.difficulty && (
+                          <span className={`pill pill-${recipe.difficulty}`} style={{ fontSize:11 }}>
+                            {recipe.difficulty}
+                          </span>
+                        )}
+                        {recipe && (
+                          <button
+                            onClick={() => onViewRecipe(recipe)}
+                            style={{ background:'none', border:'none', fontSize:12, color:'var(--green)',
+                              fontWeight:600, cursor:'pointer', padding:0, minHeight:'unset',
+                              textDecoration:'underline', textDecorationColor:'var(--green)' }}
+                          >
+                            View recipe →
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <button
                       onClick={() => doRemove(i)}
                       style={{ background:'transparent', border:'none', color:'var(--text-muted)',
-                        fontSize:18, cursor:'pointer', padding:'4px 6px', minHeight:36 }}
+                        fontSize:18, cursor:'pointer', padding:'4px 6px', minHeight:36, flexShrink:0 }}
                     >
                       ✕
                     </button>
@@ -436,10 +449,11 @@ function WeeklyNutritionPanel({ week, recipes }) {
 // ── Main Tab ───────────────────────────────────────────────────────────────
 
 export default function MealPlannerTab({ user, tick: remoteTick, macrosEnabled }) {
-  const [weekKey,   setWeekKey]   = useState(() => getISOWeekKey());
-  const [activeDay, setActiveDay] = useState(null);
-  const [tick,      setTick]      = useState(0);
-  const [toast,     setToast]     = useState('');
+  const [weekKey,       setWeekKey]       = useState(() => getISOWeekKey());
+  const [activeDay,     setActiveDay]     = useState(null);
+  const [tick,          setTick]          = useState(0);
+  const [toast,         setToast]         = useState('');
+  const [viewingRecipe, setViewingRecipe] = useState(null);
 
   useEffect(() => { setTick(t => t + 1); }, [remoteTick]);
   const touchStartX = useRef(null);
@@ -540,6 +554,19 @@ export default function MealPlannerTab({ user, tick: remoteTick, macrosEnabled }
           daySlot={week[activeDay]}
           onClose={() => setActiveDay(null)}
           onAssigned={handleAssigned}
+          onViewRecipe={recipe => { setActiveDay(null); setViewingRecipe(recipe); }}
+        />
+      )}
+
+      {/* Recipe detail sheet */}
+      {viewingRecipe && (
+        <RecipeDetailSheet
+          recipe={viewingRecipe}
+          user={user}
+          onClose={() => setViewingRecipe(null)}
+          onDeleted={() => { setViewingRecipe(null); setTick(t => t + 1); }}
+          onUpdated={() => setTick(t => t + 1)}
+          onAddToGrocery={() => { showToast('Added to grocery list!'); setViewingRecipe(null); }}
         />
       )}
 
