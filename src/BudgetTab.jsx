@@ -70,6 +70,12 @@ function fmt(n) {
   return `$${n.toFixed(2).replace(/\.00$/, '')}`;
 }
 
+function openVenmoRequest(venmoUsername, amount, note) {
+  const half = (amount / 2).toFixed(2);
+  const params = `txn=charge&recipients=${encodeURIComponent(venmoUsername)}&amount=${half}&note=${encodeURIComponent(note)}`;
+  window.location.href = `venmo://paycharge?${params}`;
+}
+
 function fmtShort(n) {
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
   return `$${Math.round(n)}`;
@@ -271,12 +277,18 @@ function AddSpendSheet({ user, onClose, onAdded }) {
 
 // ── Set Budget Target Sheet ────────────────────────────────────────────────
 
-function SetBudgetSheet({ current, onClose, onSaved }) {
-  const [value, setValue] = useState(current ? String(current) : '');
+function SetBudgetSheet({ current, currentDevonVenmo, currentRoryVenmo, onClose, onSaved }) {
+  const [value,       setValue]       = useState(current ? String(current) : '');
+  const [devonVenmo,  setDevonVenmo]  = useState(currentDevonVenmo || '');
+  const [roryVenmo,   setRoryVenmo]   = useState(currentRoryVenmo || '');
 
   function handleSave() {
     const n = parseFloat(value);
-    saveBudgetSettings({ monthlyTarget: n > 0 ? n : null });
+    saveBudgetSettings({
+      monthlyTarget: n > 0 ? n : null,
+      devonVenmo: devonVenmo.trim().replace(/^@/, ''),
+      roryVenmo:  roryVenmo.trim().replace(/^@/, ''),
+    });
     onSaved();
     onClose();
   }
@@ -292,12 +304,12 @@ function SetBudgetSheet({ current, onClose, onSaved }) {
       <div className="sheet">
         <div className="sheet-handle" />
         <div className="sheet-body">
-          <div className="sheet-title">Monthly Budget</div>
+          <div className="sheet-title">Budget Settings</div>
           <p style={{ fontSize:14, color:'var(--text-muted)', marginBottom:20, lineHeight:1.5 }}>
             Set a monthly grocery target. A dashed line will appear on the chart
             and you'll see a progress bar showing how close you are.
           </p>
-          <div className="field" style={{ marginBottom:0 }}>
+          <div className="field">
             <label>Monthly target ($)</label>
             <div style={{ position:'relative' }}>
               <span style={{
@@ -313,6 +325,37 @@ function SetBudgetSheet({ current, onClose, onSaved }) {
               />
             </div>
           </div>
+          <div className="field">
+            <label>Devon's Venmo username</label>
+            <div style={{ position:'relative' }}>
+              <span style={{
+                position:'absolute', left:14, top:'50%', transform:'translateY(-50%)',
+                fontSize:14, color:'var(--text-muted)', pointerEvents:'none',
+              }}>@</span>
+              <input
+                type="text" placeholder="devon"
+                value={devonVenmo} onChange={e => setDevonVenmo(e.target.value)}
+                style={{ paddingLeft:28 }}
+              />
+            </div>
+          </div>
+          <div className="field" style={{ marginBottom:0 }}>
+            <label>Rory's Venmo username</label>
+            <div style={{ position:'relative' }}>
+              <span style={{
+                position:'absolute', left:14, top:'50%', transform:'translateY(-50%)',
+                fontSize:14, color:'var(--text-muted)', pointerEvents:'none',
+              }}>@</span>
+              <input
+                type="text" placeholder="rory"
+                value={roryVenmo} onChange={e => setRoryVenmo(e.target.value)}
+                style={{ paddingLeft:28 }}
+              />
+            </div>
+            <p style={{ fontSize:12, color:'var(--text-muted)', margin:'8px 0 0', lineHeight:1.4 }}>
+              Whoever did the shop can request the other for half.
+            </p>
+          </div>
         </div>
         <div className="sheet-footer">
           <div style={{ display:'flex', gap:8 }}>
@@ -321,8 +364,7 @@ function SetBudgetSheet({ current, onClose, onSaved }) {
                 Remove target
               </button>
             )}
-            <button className="btn-primary" style={{ flex:2 }} onClick={handleSave}
-              disabled={!value || parseFloat(value) <= 0}>
+            <button className="btn-primary" style={{ flex:2 }} onClick={handleSave}>
               Save
             </button>
           </div>
@@ -348,7 +390,11 @@ export default function BudgetTab({ user, tick }) {
     setSettings(getBudgetSettings());
   }
 
-  const { monthlyTarget } = settings;
+  const { monthlyTarget, devonVenmo, roryVenmo } = settings;
+
+  // Whoever is logged in can request the other person
+  const targetVenmo = user === 'Rory' ? devonVenmo : user === 'Devon' ? roryVenmo : '';
+  const targetName  = user === 'Rory' ? 'Devon'    : user === 'Devon' ? 'Rory'    : '';
   const weeklyTarget = monthlyTarget ? monthlyTarget / 4.33 : null;
 
   // Entries for the viewed month
@@ -536,7 +582,25 @@ export default function BudgetTab({ user, tick }) {
                       color: isThisWeek ? 'var(--amber)' : 'var(--text-muted)' }}>
                       {isThisWeek ? 'This week · ' : ''}{weekLabel(wk)}
                     </span>
-                    <span style={{ fontSize:15, fontWeight:700 }}>{fmt(weekTotal)}</span>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      {targetVenmo && weekTotal > 0 && (
+                        <button
+                          onClick={() => {
+                            const stores = [...new Set(weekEntries.map(e => e.store))].join(', ');
+                            const note = `Groceries ${weekLabel(wk)} (${stores}) — your half`;
+                            openVenmoRequest(targetVenmo, weekTotal, note);
+                          }}
+                          style={{
+                            background:'#008CFF', color:'#fff', border:'none',
+                            borderRadius:99, padding:'3px 10px', fontSize:12,
+                            fontWeight:600, cursor:'pointer', flexShrink:0,
+                          }}
+                        >
+                          Request {targetName} {fmt(weekTotal / 2)}
+                        </button>
+                      )}
+                      <span style={{ fontSize:15, fontWeight:700 }}>{fmt(weekTotal)}</span>
+                    </div>
                   </div>
                   {/* Individual entries */}
                   {weekEntries.map((entry, i) => (
@@ -573,6 +637,8 @@ export default function BudgetTab({ user, tick }) {
       {showBudget && (
         <SetBudgetSheet
           current={monthlyTarget}
+          currentDevonVenmo={devonVenmo}
+          currentRoryVenmo={roryVenmo}
           onClose={() => setShowBudget(false)}
           onSaved={refresh}
         />

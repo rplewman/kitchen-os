@@ -383,7 +383,7 @@ export function deleteBudgetEntry(id) {
 }
 
 export function getBudgetSettings() {
-  return read(KEYS.budgetSettings, { monthlyTarget: null });
+  return read(KEYS.budgetSettings, { monthlyTarget: null, devonVenmo: '', roryVenmo: '' });
 }
 
 export function saveBudgetSettings(changes) {

@@ -498,7 +498,7 @@ export default function MealPlannerTab({ user, tick: remoteTick, macrosEnabled }
       <div style={{ padding:'28px 16px 8px', borderBottom:'1px solid var(--border)', marginBottom:12 }}>
         <p style={{ fontSize:11, fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase',
           color:'var(--amber)', marginBottom:4 }}>
-          Kitchen OS
+          The GRKN
         </p>
         <h1 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'2.8rem', margin:'0 0 12px', lineHeight:1 }}>
           Meal Plan
