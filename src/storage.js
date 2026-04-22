@@ -28,12 +28,14 @@ export function _registerPush(fn) { _push = fn; }
 // ---------------------------------------------------------------------------
 
 const KEYS = {
-  recipes: 'kitchen_os_recipes',
-  mealPlan: 'kitchen_os_meal_plan',
-  grocery: 'kitchen_os_grocery',
-  meals: 'kitchen_os_meals',
-  rankings: 'kitchen_os_rankings',
-  apiKey: 'kitchen_os_api_key',
+  recipes:        'kitchen_os_recipes',
+  mealPlan:       'kitchen_os_meal_plan',
+  grocery:        'kitchen_os_grocery',
+  meals:          'kitchen_os_meals',
+  rankings:       'kitchen_os_rankings',
+  apiKey:         'kitchen_os_api_key',
+  budget:         'kitchen_os_budget',
+  budgetSettings: 'kitchen_os_budget_settings',
 };
 
 function read(key, fallback) {
@@ -359,6 +361,33 @@ export function getApiKey() {
 
 export function setApiKey(key) {
   write(KEYS.apiKey, key);
+}
+
+// ---------------------------------------------------------------------------
+// Budget
+// ---------------------------------------------------------------------------
+
+export function getBudgetEntries() {
+  return read(KEYS.budget, []);
+}
+
+export function addBudgetEntry(entry) {
+  const list = getBudgetEntries();
+  const item = { id: generateId(), createdAt: new Date().toISOString(), ...entry };
+  write(KEYS.budget, [item, ...list]);
+  return item;
+}
+
+export function deleteBudgetEntry(id) {
+  write(KEYS.budget, getBudgetEntries().filter(e => e.id !== id));
+}
+
+export function getBudgetSettings() {
+  return read(KEYS.budgetSettings, { monthlyTarget: null });
+}
+
+export function saveBudgetSettings(changes) {
+  write(KEYS.budgetSettings, { ...getBudgetSettings(), ...changes });
 }
 
 // ---------------------------------------------------------------------------

@@ -5,12 +5,14 @@ import RecipesTab      from './RecipesTab.jsx';
 import MealPlannerTab  from './MealPlannerTab.jsx';
 import GroceryTab      from './GroceryTab.jsx';
 import HallOfFameTab   from './HallOfFameTab.jsx';
+import BudgetTab       from './BudgetTab.jsx';
 
 const TABS = [
-  { id: 'plan',    icon: '📅', label: 'Plan'     },
-  { id: 'recipes', icon: '📖', label: 'Recipes'  },
-  { id: 'grocery', icon: '🛒', label: 'Groceries'},
-  { id: 'hof',     icon: '🏆', label: 'Hall'     },
+  { id: 'plan',    icon: '📅', label: 'Plan'    },
+  { id: 'recipes', icon: '📖', label: 'Recipes' },
+  { id: 'grocery', icon: '🛒', label: 'Shop'    },
+  { id: 'hof',     icon: '🏆', label: 'Hall'    },
+  { id: 'budget',  icon: '💰', label: 'Budget'  },
 ];
 
 const KNOWN_USERS = ['Rory', 'Devon'];
@@ -94,6 +96,7 @@ export default function App() {
         {activeTab === 'recipes' && <RecipesTab     user={user} tick={tick} macrosEnabled={macrosEnabled} />}
         {activeTab === 'grocery' && <GroceryTab     user={user} tick={tick} />}
         {activeTab === 'hof'     && <HallOfFameTab  user={user} tick={tick} />}
+        {activeTab === 'budget'  && <BudgetTab      user={user} tick={tick} />}
       </div>
 
       {/* ── Bottom tab bar ── */}
