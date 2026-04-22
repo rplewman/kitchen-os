@@ -70,15 +70,10 @@ function fmt(n) {
   return `$${n.toFixed(2).replace(/\.00$/, '')}`;
 }
 
-function openVenmoRequest(venmoUsername, amount, note) {
+function venmoRequestUrl(venmoUsername, amount, note) {
   const half = (amount / 2).toFixed(2);
-  const params = new URLSearchParams({
-    txn: 'charge',
-    recipients: venmoUsername,
-    amount: half,
-    note,
-  });
-  window.open(`https://venmo.com/paycharge?${params}`, '_blank', 'noopener');
+  const params = new URLSearchParams({ txn: 'charge', recipients: venmoUsername, amount: half, note });
+  return `venmo://paycharge?${params}`;
 }
 
 function fmtShort(n) {
@@ -588,22 +583,22 @@ export default function BudgetTab({ user, tick }) {
                       {isThisWeek ? 'This week · ' : ''}{weekLabel(wk)}
                     </span>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      {targetVenmo && weekTotal > 0 && (
-                        <button
-                          onClick={() => {
-                            const stores = [...new Set(weekEntries.map(e => e.store))].join(', ');
-                            const note = `Groceries ${weekLabel(wk)} (${stores}) — your half`;
-                            openVenmoRequest(targetVenmo, weekTotal, note);
-                          }}
-                          style={{
-                            background:'#008CFF', color:'#fff', border:'none',
-                            borderRadius:99, padding:'3px 10px', fontSize:12,
-                            fontWeight:600, cursor:'pointer', flexShrink:0,
-                          }}
-                        >
-                          Request {targetName} {fmt(weekTotal / 2)}
-                        </button>
-                      )}
+                      {targetVenmo && weekTotal > 0 && (() => {
+                        const stores = [...new Set(weekEntries.map(e => e.store))].join(', ');
+                        const note = `Groceries ${weekLabel(wk)} (${stores}) — your half`;
+                        return (
+                          <a
+                            href={venmoRequestUrl(targetVenmo, weekTotal, note)}
+                            style={{
+                              background:'#008CFF', color:'#fff', textDecoration:'none',
+                              borderRadius:99, padding:'4px 10px', fontSize:12,
+                              fontWeight:600, flexShrink:0, display:'inline-block',
+                            }}
+                          >
+                            Request {targetName} {fmt(weekTotal / 2)}
+                          </a>
+                        );
+                      })()}
                       <span style={{ fontSize:15, fontWeight:700 }}>{fmt(weekTotal)}</span>
                     </div>
                   </div>
