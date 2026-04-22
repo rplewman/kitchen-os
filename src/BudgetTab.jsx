@@ -70,10 +70,67 @@ function fmt(n) {
   return `$${n.toFixed(2).replace(/\.00$/, '')}`;
 }
 
-function venmoRequestUrl(venmoUsername, amount, note) {
+// ── Venmo Request Sheet ────────────────────────────────────────────────────
+
+function VenmoRequestSheet({ targetName, targetVenmo, amount, weekLabel, onClose }) {
   const half = (amount / 2).toFixed(2);
-  const params = new URLSearchParams({ txn: 'charge', recipients: venmoUsername, amount: half, note });
-  return `venmo://paycharge?${params}`;
+  const deepLink = `venmo://paycharge?txn=charge&recipients=${encodeURIComponent(targetVenmo)}&amount=${half}&note=${encodeURIComponent(`Groceries ${weekLabel} - your half`)}`;
+  const webLink  = `https://venmo.com/paycharge?txn=charge&recipients=${encodeURIComponent(targetVenmo)}&amount=${half}&note=${encodeURIComponent(`Groceries ${weekLabel} - your half`)}`;
+
+  return (
+    <div className="sheet-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="sheet">
+        <div className="sheet-handle" />
+        <div className="sheet-body" style={{ textAlign:'center' }}>
+          <div style={{ fontSize:40, marginBottom:8 }}>💸</div>
+          <div className="sheet-title" style={{ marginBottom:4 }}>Request {targetName}</div>
+          <p style={{ fontSize:14, color:'var(--text-muted)', marginBottom:24 }}>
+            Week of {weekLabel}
+          </p>
+          <div style={{
+            fontFamily:'Cormorant Garamond,serif', fontSize:'3.5rem', fontWeight:700,
+            lineHeight:1, marginBottom:8, color:'var(--text)',
+          }}>
+            ${half}
+          </div>
+          <p style={{ fontSize:13, color:'var(--text-muted)', marginBottom:32 }}>
+            half of ${amount.toFixed(2)} total
+          </p>
+
+          {/* Primary: deep link (opens Venmo app) */}
+          <a
+            href={deepLink}
+            style={{
+              display:'block', background:'#008CFF', color:'#fff',
+              textDecoration:'none', borderRadius:'var(--radius-sm)',
+              padding:'14px', fontSize:16, fontWeight:700, marginBottom:12,
+            }}
+          >
+            Open in Venmo app
+          </a>
+
+          {/* Fallback: web link */}
+          <a
+            href={webLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display:'block', background:'var(--bg)', color:'var(--text)',
+              textDecoration:'none', borderRadius:'var(--radius-sm)',
+              border:'1.5px solid var(--border)',
+              padding:'13px', fontSize:15, fontWeight:500, marginBottom:8,
+            }}
+          >
+            Open Venmo in browser
+          </a>
+
+          <button className="btn-ghost" style={{ width:'100%', marginTop:4 }} onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function fmtShort(n) {
@@ -382,6 +439,7 @@ export default function BudgetTab({ user, tick }) {
   const [viewMonth,   setViewMonth]   = useState(currentMonthKey());
   const [showAdd,     setShowAdd]     = useState(false);
   const [showBudget,  setShowBudget]  = useState(false);
+  const [venmoSheet,  setVenmoSheet]  = useState(null); // { weekKey, weekTotal, stores }
 
   useEffect(() => { setEntries(getBudgetEntries()); setSettings(getBudgetSettings()); }, [tick]);
 
@@ -583,22 +641,18 @@ export default function BudgetTab({ user, tick }) {
                       {isThisWeek ? 'This week · ' : ''}{weekLabel(wk)}
                     </span>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      {targetVenmo && weekTotal > 0 && (() => {
-                        const stores = [...new Set(weekEntries.map(e => e.store))].join(', ');
-                        const note = `Groceries ${weekLabel(wk)} (${stores}) — your half`;
-                        return (
-                          <a
-                            href={venmoRequestUrl(targetVenmo, weekTotal, note)}
-                            style={{
-                              background:'#008CFF', color:'#fff', textDecoration:'none',
-                              borderRadius:99, padding:'4px 10px', fontSize:12,
-                              fontWeight:600, flexShrink:0, display:'inline-block',
-                            }}
-                          >
-                            Request {targetName} {fmt(weekTotal / 2)}
-                          </a>
-                        );
-                      })()}
+                      {targetVenmo && weekTotal > 0 && (
+                        <button
+                          onClick={() => setVenmoSheet({ wk, weekTotal })}
+                          style={{
+                            background:'#008CFF', color:'#fff', border:'none',
+                            borderRadius:99, padding:'4px 10px', fontSize:12,
+                            fontWeight:600, cursor:'pointer', flexShrink:0,
+                          }}
+                        >
+                          Request {targetName} {fmt(weekTotal / 2)}
+                        </button>
+                      )}
                       <span style={{ fontSize:15, fontWeight:700 }}>{fmt(weekTotal)}</span>
                     </div>
                   </div>
@@ -641,6 +695,15 @@ export default function BudgetTab({ user, tick }) {
           currentRoryVenmo={roryVenmo}
           onClose={() => setShowBudget(false)}
           onSaved={refresh}
+        />
+      )}
+      {venmoSheet && (
+        <VenmoRequestSheet
+          targetName={targetName}
+          targetVenmo={targetVenmo}
+          amount={venmoSheet.weekTotal}
+          weekLabel={weekLabel(venmoSheet.wk)}
+          onClose={() => setVenmoSheet(null)}
         />
       )}
     </div>
