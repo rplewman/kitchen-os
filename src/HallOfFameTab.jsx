@@ -142,7 +142,7 @@ function LogMealSheet({ user, onClose, onLogged }) {
             </div>
 
             <p style={{ fontWeight:500, fontSize:15, marginBottom:6, color:'var(--text-muted)' }}>better or worse than</p>
-            <div className="card" style={{ marginBottom:24 }}>
+            <div className="card">
               <p style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.3rem', fontWeight:600 }}>
                 {compareMeal?.name || '?'}
               </p>
@@ -152,11 +152,13 @@ function LogMealSheet({ user, onClose, onLogged }) {
                 </p>
               )}
             </div>
+          </div>
 
+          <div className="sheet-footer">
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <button
                 className="btn-primary"
-                style={{ fontSize:17, minHeight:56, background:'var(--green)' }}
+                style={{ fontSize:17, minHeight:56 }}
                 onClick={() => handleCompare(true)}
               >
                 👍 Better
@@ -232,11 +234,13 @@ function LogMealSheet({ user, onClose, onLogged }) {
           </div>
 
           {/* Notes */}
-          <div className="field">
+          <div className="field" style={{ marginBottom:0 }}>
             <label>Notes (optional)</label>
             <textarea rows={2} placeholder="Any thoughts?" value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
+        </div>
 
+        <div className="sheet-footer">
           <button className="btn-amber" style={{ width:'100%' }} onClick={handleLog}
             disabled={!mealName.trim() && !recipeId}>
             Log &amp; Rank →
