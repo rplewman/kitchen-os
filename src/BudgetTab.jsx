@@ -72,8 +72,13 @@ function fmt(n) {
 
 function openVenmoRequest(venmoUsername, amount, note) {
   const half = (amount / 2).toFixed(2);
-  const params = `txn=charge&recipients=${encodeURIComponent(venmoUsername)}&amount=${half}&note=${encodeURIComponent(note)}`;
-  window.location.href = `venmo://paycharge?${params}`;
+  const params = new URLSearchParams({
+    txn: 'charge',
+    recipients: venmoUsername,
+    amount: half,
+    note,
+  });
+  window.open(`https://venmo.com/paycharge?${params}`, '_blank', 'noopener');
 }
 
 function fmtShort(n) {
