@@ -5,34 +5,8 @@ import {
   getISOWeekKey, getWeek, addDayMeal,
 } from './storage.js';
 import Anthropic from '@anthropic-ai/sdk';
-
-// ── Claude API helper ──────────────────────────────────────────────────────
-
-async function callClaude(systemPrompt, userContent) {
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error('No API key set. Tap ⚙️ to add your Claude API key.');
-  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-  const msg = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2048,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userContent }],
-  });
-  return msg.content[0].text;
-}
-
-// Robustly extract JSON from Claude's response regardless of any surrounding text or fences
-function parseJson(text) {
-  // 1. Try direct parse first
-  try { return JSON.parse(text.trim()); } catch {}
-  // 2. Strip markdown code fences and retry
-  const stripped = text.replace(/^```(?:json)?\s*/im, '').replace(/```\s*$/m, '').trim();
-  try { return JSON.parse(stripped); } catch {}
-  // 3. Find the first {...} block in the response (handles preamble text)
-  const match = stripped.match(/\{[\s\S]*\}/);
-  if (match) return JSON.parse(match[0]);
-  throw new SyntaxError('No valid JSON found in Claude response');
-}
+import { callClaude, parseJson } from './claude.js';
+import IngredientSearchSheet from './IngredientSearchSheet.jsx';
 
 // ── Background macro estimation ────────────────────────────────────────────
 
@@ -513,6 +487,7 @@ function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDeleted, on
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showIngPicker, setShowIngPicker] = useState(false);
   const [selected, setSelected] = useState({});
+  const [searchIngredient, setSearchIngredient] = useState(null);
 
   // View-mode scaling state
   const baseServings = recipe.servings || 2;
@@ -712,9 +687,21 @@ function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDeleted, on
               <h3 style={{ fontFamily:'Cormorant Garamond,serif', marginBottom:8 }}>Ingredients</h3>
               <ul style={{ listStyle:'none', display:'flex', flexDirection:'column', gap:4 }}>
                 {recipe.ingredients.map((ing, i) => (
-                  <li key={i} style={{ fontSize:14, padding:'4px 0', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between' }}>
-                    <span>{ing.name}</span>
-                    <span style={{ color:'var(--text-muted)', fontSize:13 }}>{[scaleAmount(ing.amount), ing.unit].filter(Boolean).join(' ')}</span>
+                  <li key={i} style={{ fontSize:14, padding:'4px 0', borderBottom:'1px solid var(--border)',
+                    display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+                    <span style={{ flex:1 }}>{ing.name}</span>
+                    <span style={{ color:'var(--text-muted)', fontSize:13 }}>
+                      {[scaleAmount(ing.amount), ing.unit].filter(Boolean).join(' ')}
+                    </span>
+                    <button
+                      onClick={() => setSearchIngredient(ing.name)}
+                      title="Find recipes using this ingredient"
+                      style={{ background:'none', border:'none', cursor:'pointer', fontSize:14,
+                        color:'var(--text-muted)', padding:'2px 4px', minHeight:'unset',
+                        lineHeight:1, flexShrink:0 }}
+                    >
+                      🔍
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -811,6 +798,15 @@ function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDeleted, on
           )}
         </div>
         </>
+        )}
+
+        {/* Ingredient search sheet — rendered on top of detail sheet */}
+        {searchIngredient && (
+          <IngredientSearchSheet
+            ingredient={searchIngredient}
+            user={user}
+            onClose={() => setSearchIngredient(null)}
+          />
         )}
       </div>
     </div>

@@ -6,6 +6,7 @@ import {
   getISOWeekKey,
 } from './storage.js';
 import Anthropic from '@anthropic-ai/sdk';
+import IngredientSearchSheet from './IngredientSearchSheet.jsx';
 
 const CATEGORIES = ['Produce', 'Meat & Fish', 'Dairy', 'Pantry', 'Other'];
 
@@ -31,7 +32,7 @@ async function categoriseItem(name) {
 
 // ── Swipeable grocery item ─────────────────────────────────────────────────
 
-function GroceryItem({ item, onToggle, onDelete, onEdit }) {
+function GroceryItem({ item, onToggle, onDelete, onEdit, onSearch }) {
   const touchStartX = useRef(null);
   const [swiped,     setSwiped]     = useState(false);
   const [editingQty, setEditingQty] = useState(false);
@@ -86,13 +87,26 @@ function GroceryItem({ item, onToggle, onDelete, onEdit }) {
 
         {/* Name + meta */}
         <div style={{ flex:1, minWidth:0 }}>
-          <p style={{
-            fontSize:15, fontWeight:500, margin:0, lineHeight:1.3,
-            textDecoration: item.checked ? 'line-through' : 'none',
-            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-          }}>
-            {item.name}
-          </p>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <p style={{
+              fontSize:15, fontWeight:500, margin:0, lineHeight:1.3, flex:1,
+              textDecoration: item.checked ? 'line-through' : 'none',
+              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+            }}>
+              {item.name}
+            </p>
+            <button
+              onClick={e => { e.stopPropagation(); onSearch(item.name); }}
+              title="Find recipes with this ingredient"
+              style={{ background:'none', border:'none', cursor:'pointer', fontSize:13,
+                color:'var(--border)', padding:'0 2px', minHeight:'unset',
+                lineHeight:1, flexShrink:0, transition:'color 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--text-muted)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--border)'}
+            >
+              🔍
+            </button>
+          </div>
           {editingQty ? (
             <div style={{ display:'flex', gap:4, alignItems:'center', marginTop:2 }}>
               <input type="text" value={editAmount} onChange={e => setEditAmount(e.target.value)}
@@ -279,11 +293,12 @@ function AddFromRecipeSheet({ user, onClose, onAdded }) {
 // ── Main Tab ───────────────────────────────────────────────────────────────
 
 export default function GroceryTab({ user, tick }) {
-  const [items,      setItems]      = useState(() => getGrocery());
-  const [showAdd,    setShowAdd]    = useState(false);
-  const [showRecipe, setShowRecipe] = useState(false);
-  const [toast,      setToast]      = useState('');
-  const [weekFilter, setWeekFilter] = useState('all'); // 'all' | weekKey string
+  const [items,            setItems]            = useState(() => getGrocery());
+  const [showAdd,          setShowAdd]          = useState(false);
+  const [showRecipe,       setShowRecipe]       = useState(false);
+  const [toast,            setToast]            = useState('');
+  const [weekFilter,       setWeekFilter]       = useState('all'); // 'all' | weekKey string
+  const [searchIngredient, setSearchIngredient] = useState(null);
 
   // Re-read when Firebase pushes a remote change
   useEffect(() => { setItems(getGrocery()); }, [tick]);
@@ -433,6 +448,7 @@ export default function GroceryTab({ user, tick }) {
                   onToggle={handleToggle}
                   onDelete={handleDelete}
                   onEdit={handleEdit}
+                  onSearch={name => setSearchIngredient(name)}
                 />
               ))}
             </div>
@@ -446,6 +462,13 @@ export default function GroceryTab({ user, tick }) {
       )}
       {showRecipe && (
         <AddFromRecipeSheet user={user} onClose={() => setShowRecipe(false)} onAdded={refresh} />
+      )}
+      {searchIngredient && (
+        <IngredientSearchSheet
+          ingredient={searchIngredient}
+          user={user}
+          onClose={() => setSearchIngredient(null)}
+        />
       )}
 
       {/* Toast */}
