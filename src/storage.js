@@ -298,6 +298,10 @@ export function addMeal(meal) {
   return newMeal;
 }
 
+export function updateMeal(id, changes) {
+  write(KEYS.meals, getMeals().map(m => m.id === id ? { ...m, ...changes } : m));
+}
+
 export function deleteMeal(id) {
   write(KEYS.meals, getMeals().filter(m => m.id !== id));
 }

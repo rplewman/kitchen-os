@@ -3,10 +3,12 @@ import {
   getRecipes, saveRecipe, updateRecipe, deleteRecipe,
   addIngredientsToGrocery, getApiKey,
   getISOWeekKey, getWeek, addDayMeal,
+  getMeals, addMeal, incrementCookCount,
 } from './storage.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { callClaude, parseJson } from './claude.js';
 import IngredientSearchSheet from './IngredientSearchSheet.jsx';
+import { LogCookSheet } from './HallOfFameTab.jsx';
 
 // ── Background macro estimation ────────────────────────────────────────────
 
@@ -488,6 +490,18 @@ export function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDele
   const [showIngPicker, setShowIngPicker] = useState(false);
   const [selected, setSelected] = useState({});
   const [searchIngredient, setSearchIngredient] = useState(null);
+  const [showLogCook,      setShowLogCook]      = useState(false);
+  const [cookMeals,        setCookMeals]        = useState(
+    () => getMeals().filter(m => m.recipeId === initialRecipe.id)
+      .sort((a, b) => b.cookedAt.localeCompare(a.cookedAt))
+  );
+
+  function refreshCooks() {
+    setCookMeals(
+      getMeals().filter(m => m.recipeId === recipe.id)
+        .sort((a, b) => b.cookedAt.localeCompare(a.cookedAt))
+    );
+  }
 
   // View-mode scaling state
   const baseServings = recipe.servings || 2;
@@ -754,6 +768,34 @@ export function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDele
           )}
         </div>
 
+        {/* Cook history */}
+        {!editing && cookMeals.length > 0 && (
+          <div style={{ padding:'14px 20px', borderTop:'1px solid var(--border)' }}>
+            <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase',
+              letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:10 }}>
+              Cook history
+            </p>
+            {cookMeals.slice(0, 3).map(m => (
+              <div key={m.id} style={{ marginBottom:8 }}>
+                <p style={{ fontSize:13, color:'var(--text-muted)', margin:0 }}>
+                  {m.vote === 'up' ? '👍' : m.vote === 'down' ? '👎' : '🍳'}{' '}
+                  {m.addedBy} · {timeAgo(m.cookedAt)}
+                </p>
+                {m.note && (
+                  <p style={{ fontSize:12, color:'var(--text-muted)', fontStyle:'italic', margin:'2px 0 0' }}>
+                    "{m.note}"
+                  </p>
+                )}
+              </div>
+            ))}
+            {cookMeals.length > 3 && (
+              <p style={{ fontSize:12, color:'var(--text-muted)', margin:0 }}>
+                +{cookMeals.length - 3} more cook{cookMeals.length - 3 !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Sticky footer */}
         <div className="sheet-footer">
           {showIngPicker ? (
@@ -768,6 +810,9 @@ export function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDele
             </div>
           ) : (
             <div style={{ display:'flex', gap:8 }}>
+              <button className="btn-primary" style={{ flex:1 }} onClick={() => setShowLogCook(true)}>
+                🍳 Log
+              </button>
               {recipe.ingredients?.length > 0 && (
                 <button className="btn-amber" style={{ flex:1 }} onClick={() => {
                   setShowIngPicker(true);
@@ -806,6 +851,14 @@ export function RecipeDetailSheet({ recipe: initialRecipe, user, onClose, onDele
             ingredient={searchIngredient}
             user={user}
             onClose={() => setSearchIngredient(null)}
+          />
+        )}
+        {showLogCook && (
+          <LogCookSheet
+            user={user}
+            prefilledRecipe={recipe}
+            onClose={() => setShowLogCook(false)}
+            onLogged={() => { setShowLogCook(false); refreshCooks(); }}
           />
         )}
       </div>
