@@ -177,7 +177,7 @@ export function setDayMeal(weekKey, day, { mealName, recipeId }) {
 
 /** ISO week key e.g. "2025-W22" */
 export function getISOWeekKey(date = new Date()) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const dayNum = d.getUTCDay() || 7; // Mon=1 … Sun=7
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
