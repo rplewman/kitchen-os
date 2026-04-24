@@ -22,6 +22,8 @@ const STORAGE_KEYS = [
   'kitchen_os_rankings',
   'kitchen_os_api_key',
   'kitchen_os_settings',
+  'kitchen_os_budget',
+  'kitchen_os_budget_settings',
 ];
 
 // Collect all localStorage data as one object
