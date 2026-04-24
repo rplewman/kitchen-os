@@ -73,9 +73,11 @@ function fmt(n) {
 // ── Venmo Request Sheet ────────────────────────────────────────────────────
 
 function VenmoRequestSheet({ targetName, targetVenmo, amount, weekLabel, onClose }) {
-  const half = (amount / 2).toFixed(2);
-  const deepLink = `venmo://paycharge?txn=charge&recipients=${encodeURIComponent(targetVenmo)}&amount=${half}&note=${encodeURIComponent(`Groceries ${weekLabel} - your half`)}`;
-  const webLink  = `https://venmo.com/paycharge?txn=charge&recipients=${encodeURIComponent(targetVenmo)}&amount=${half}&note=${encodeURIComponent(`Groceries ${weekLabel} - your half`)}`;
+  const half     = (amount / 2).toFixed(2);
+  const handle   = targetVenmo.replace(/^@/, ''); // ensure no double-@
+  const note     = `Groceries ${weekLabel} - your half`;
+  const deepLink = `venmo://paycharge?txn=charge&recipients=${encodeURIComponent('@' + handle)}&amount=${half}&note=${encodeURIComponent(note)}`;
+  const webLink  = `https://venmo.com/paycharge?txn=charge&recipients=${encodeURIComponent('@' + handle)}&amount=${half}&note=${encodeURIComponent(note)}`;
 
   return (
     <div className="sheet-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -84,9 +86,21 @@ function VenmoRequestSheet({ targetName, targetVenmo, amount, weekLabel, onClose
         <div className="sheet-body" style={{ textAlign:'center' }}>
           <div style={{ fontSize:40, marginBottom:8 }}>💸</div>
           <div className="sheet-title" style={{ marginBottom:4 }}>Request {targetName}</div>
-          <p style={{ fontSize:14, color:'var(--text-muted)', marginBottom:24 }}>
+          {/* Show the exact handle being used so user can verify */}
+          <p style={{ fontSize:13, color:'var(--text-muted)', marginBottom: handle ? 4 : 24 }}>
             Week of {weekLabel}
           </p>
+          {handle ? (
+            <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', marginBottom:20,
+              background:'var(--bg)', borderRadius:'var(--radius-sm)', padding:'6px 12px',
+              display:'inline-block' }}>
+              @{handle}
+            </p>
+          ) : (
+            <p style={{ fontSize:13, color:'#c0392b', marginBottom:20 }}>
+              ⚠️ No Venmo username set — tap Set budget to add one.
+            </p>
+          )}
           <div style={{
             fontFamily:'Cormorant Garamond,serif', fontSize:'3.5rem', fontWeight:700,
             lineHeight:1, marginBottom:8, color:'var(--text)',
