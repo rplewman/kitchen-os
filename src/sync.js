@@ -57,6 +57,15 @@ export function pushToFirebase() {
   }, 600);
 }
 
+/** Flush any pending debounced write immediately — call before app goes to background. */
+export function flushPush() {
+  if (!isFirebaseConfigured || !pushTimer) return;
+  clearTimeout(pushTimer);
+  pushTimer = null;
+  const snap = getLocalSnapshot();
+  set(ref(db, ROOT), snap).catch(err => console.warn('Firebase flush error:', err));
+}
+
 let listenerRef = null;
 let ignoreNextRemote = false; // avoid echo: don't apply our own push back
 

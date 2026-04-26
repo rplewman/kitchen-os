@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getApiKey, setApiKey, getSettings, saveSettings, _registerPush, getStoredUser, setStoredUser } from './storage.js';
-import { initSync, teardownSync, pushToFirebase, forceSyncFromFirebase, isFirebaseConfigured } from './sync.js';
+import { initSync, teardownSync, pushToFirebase, flushPush, forceSyncFromFirebase, isFirebaseConfigured } from './sync.js';
 import RecipesTab      from './RecipesTab.jsx';
 import MealPlannerTab  from './MealPlannerTab.jsx';
 import GroceryTab      from './GroceryTab.jsx';
@@ -49,7 +49,11 @@ export default function App() {
 
     // Re-pull whenever app comes back to foreground (mobile background → foreground)
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') forceSyncFromFirebase(bumpTick);
+      if (document.visibilityState === 'visible') {
+        forceSyncFromFirebase(bumpTick);
+      } else {
+        flushPush(); // app going to background — flush any pending write immediately
+      }
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
