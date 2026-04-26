@@ -34,22 +34,30 @@ async function categoriseItem(name) {
 
 function GroceryItem({ item, onToggle, onDelete, onEdit, onSearch }) {
   const touchStartX = useRef(null);
-  const [swiped,     setSwiped]     = useState(false);
-  const [editingQty, setEditingQty] = useState(false);
-  const [editAmount, setEditAmount] = useState(item.amount || '');
-  const [editUnit,   setEditUnit]   = useState(item.unit   || '');
+  const [swiped,       setSwiped]       = useState(false);
+  const [editingQty,   setEditingQty]   = useState(false);
+  const [editingName,  setEditingName]  = useState(false);
+  const [editAmount,   setEditAmount]   = useState(item.amount || '');
+  const [editUnit,     setEditUnit]     = useState(item.unit   || '');
+  const [editName,     setEditName]     = useState(item.name   || '');
 
-  function saveEdit() {
+  function saveQty() {
     onEdit(item.id, { amount: editAmount.trim(), unit: editUnit.trim() });
     setEditingQty(false);
+  }
+
+  function saveName() {
+    const n = editName.trim();
+    if (n) onEdit(item.id, { name: n });
+    setEditingName(false);
   }
 
   function onTouchStart(e) { touchStartX.current = e.touches[0].clientX; }
   function onTouchEnd(e) {
     if (touchStartX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (dx < -60) { setSwiped(true); }        // swipe left → reveal delete
-    else if (Math.abs(dx) > 20) { setSwiped(false); } // any other swipe → reset
+    if (dx < -60) { setSwiped(true); }
+    else if (Math.abs(dx) > 20) { setSwiped(false); }
     touchStartX.current = null;
   }
 
@@ -70,7 +78,7 @@ function GroceryItem({ item, onToggle, onDelete, onEdit, onSearch }) {
           opacity: item.checked ? 0.5 : 1,
         }}
       >
-        {/* Circular checkbox — intentional tap only, no swipe trigger */}
+        {/* Circular checkbox */}
         <div
           onClick={() => onToggle(item)}
           style={{
@@ -86,49 +94,69 @@ function GroceryItem({ item, onToggle, onDelete, onEdit, onSearch }) {
 
         {/* Name + meta */}
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <p style={{
-              fontSize:15, fontWeight:500, margin:0, lineHeight:1.3, flex:1,
-              textDecoration: item.checked ? 'line-through' : 'none',
-              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-            }}>
-              {item.name}
-            </p>
-            <button
-              onClick={e => { e.stopPropagation(); onSearch(item.name); }}
-              title="Find recipes with this ingredient"
-              style={{ background:'none', border:'none', cursor:'pointer', fontSize:13,
-                color:'var(--border)', padding:'0 2px', minHeight:'unset',
-                lineHeight:1, flexShrink:0, transition:'color 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.color = 'var(--text-muted)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'var(--border)'}
-            >
-              🪄
-            </button>
-          </div>
+          {/* Name row — tap ✏ to edit */}
+          {editingName ? (
+            <div style={{ display:'flex', gap:4, alignItems:'center', marginBottom:2 }}>
+              <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
+                onKeyDown={e => { if (e.key==='Enter') saveName(); if (e.key==='Escape') setEditingName(false); }}
+                style={{ flex:1, fontSize:14, padding:'2px 6px', height:28 }} autoFocus />
+              <button onClick={saveName}
+                style={{ fontSize:11, background:'var(--green)', color:'#fff', border:'none',
+                  borderRadius:4, padding:'2px 8px', cursor:'pointer', height:28 }}>✓</button>
+              <button onClick={() => setEditingName(false)}
+                style={{ fontSize:13, background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}>✕</button>
+            </div>
+          ) : (
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <p style={{
+                fontSize:15, fontWeight:500, margin:0, lineHeight:1.3, flex:1,
+                textDecoration: item.checked ? 'line-through' : 'none',
+                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+              }}>
+                {item.name}
+              </p>
+              <button
+                onClick={e => { e.stopPropagation(); setEditName(item.name); setEditingName(true); }}
+                title="Edit name"
+                style={{ background:'none', border:'none', cursor:'pointer', fontSize:11,
+                  color:'var(--border)', padding:'0 2px', minHeight:'unset', lineHeight:1, flexShrink:0 }}
+              >✏</button>
+              <button
+                onClick={e => { e.stopPropagation(); onSearch(item.name); }}
+                title="Find recipes with this ingredient"
+                style={{ background:'none', border:'none', cursor:'pointer', fontSize:13,
+                  color:'var(--border)', padding:'0 2px', minHeight:'unset',
+                  lineHeight:1, flexShrink:0, transition:'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--border)'}
+              >🪄</button>
+            </div>
+          )}
+
+          {/* Qty row — always tappable */}
           {editingQty ? (
             <div style={{ display:'flex', gap:4, alignItems:'center', marginTop:2 }}>
               <input type="text" value={editAmount} onChange={e => setEditAmount(e.target.value)}
-                onKeyDown={e => { if (e.key==='Enter') saveEdit(); if (e.key==='Escape') setEditingQty(false); }}
+                onKeyDown={e => { if (e.key==='Enter') saveQty(); if (e.key==='Escape') setEditingQty(false); }}
                 style={{ width:52, fontSize:12, padding:'2px 6px', height:26 }} autoFocus />
               <input type="text" value={editUnit} onChange={e => setEditUnit(e.target.value)}
-                onKeyDown={e => { if (e.key==='Enter') saveEdit(); if (e.key==='Escape') setEditingQty(false); }}
+                onKeyDown={e => { if (e.key==='Enter') saveQty(); if (e.key==='Escape') setEditingQty(false); }}
                 style={{ width:64, fontSize:12, padding:'2px 6px', height:26 }} placeholder="unit" />
-              <button onClick={saveEdit}
+              <button onClick={saveQty}
                 style={{ fontSize:11, background:'var(--green)', color:'#fff', border:'none',
                   borderRadius:4, padding:'2px 8px', cursor:'pointer', height:26 }}>✓</button>
               <button onClick={() => setEditingQty(false)}
                 style={{ fontSize:13, background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}>✕</button>
             </div>
-          ) : (item.amount || item.unit || item.addedBy) && (
-            <p style={{ fontSize:12, color:'var(--text-muted)', margin:0,
-              cursor: (item.amount || item.unit) ? 'pointer' : 'default' }}
-              onClick={() => { if (item.amount || item.unit) {
-                setEditAmount(item.amount || ''); setEditUnit(item.unit || ''); setEditingQty(true);
-              }}}>
-              {[item.amount, item.unit].filter(Boolean).join(' ')}
-              {item.addedBy && ` · ${item.addedBy}`}
-              {(item.amount || item.unit) && <span style={{ marginLeft:4, fontSize:10, color:'var(--border)' }}>✏</span>}
+          ) : (
+            <p
+              style={{ fontSize:12, color:'var(--text-muted)', margin:0, cursor:'pointer' }}
+              onClick={() => { setEditAmount(item.amount || ''); setEditUnit(item.unit || ''); setEditingQty(true); }}
+            >
+              {(item.amount || item.unit)
+                ? `${[item.amount, item.unit].filter(Boolean).join(' ')}${item.addedBy ? ` · ${item.addedBy}` : ''}`
+                : item.addedBy || ''}
+              <span style={{ marginLeft:4, fontSize:10, color:'var(--border)' }}>✏</span>
             </p>
           )}
         </div>
